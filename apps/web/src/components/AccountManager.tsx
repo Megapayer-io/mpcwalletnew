@@ -11,7 +11,8 @@ export function AccountManager() {
   const [copied, setCopied] = useState(false);
   const [importData, setImportData] = useState({
     privateKey: '',
-    name: ''
+    name: '',
+    importType: 'privateKey' as 'privateKey' | 'mnemonic'
   });
   const [createData, setCreateData] = useState({
     name: ''
@@ -24,6 +25,7 @@ export function AccountManager() {
     switchAccount,
     createAccount,
     importAccount,
+    importWallet,
     removeAccount,
     exportPrivateKey,
     clearError,
@@ -32,17 +34,25 @@ export function AccountManager() {
 
   const handleImportAccount = async () => {
     if (!importData.privateKey.trim()) {
-      setError('Private key is required');
+      setError(importData.importType === 'privateKey' ? 'Private key is required' : 'Seed phrase is required');
       return;
     }
 
     try {
       clearError();
-      await importAccount({
-        privateKey: importData.privateKey.trim(),
-        name: importData.name || 'Imported Account'
-      });
-      setImportData({ privateKey: '', name: '' });
+      
+      if (importData.importType === 'privateKey') {
+        // Import individual account with private key
+        await importAccount({
+          privateKey: importData.privateKey.trim(),
+          name: importData.name || 'Imported Account'
+        });
+      } else {
+        // Import wallet with mnemonic (this will replace the current wallet)
+        await importWallet(importData.privateKey.trim());
+      }
+      
+      setImportData({ privateKey: '', name: '', importType: 'privateKey' });
       setShowImportForm(false);
       setError('');
     } catch (error) {
@@ -229,17 +239,55 @@ export function AccountManager() {
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Import Account</h3>
             <div className="space-y-4">
+              {/* Import Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Import Method
+                </label>
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setImportData(prev => ({ ...prev, importType: 'privateKey', privateKey: '' }))}
+                    className={`flex-1 px-3 py-2 text-sm rounded-md border ${
+                      importData.importType === 'privateKey'
+                        ? 'bg-blue-50 border-blue-300 text-blue-700'
+                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    Private Key
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImportData(prev => ({ ...prev, importType: 'mnemonic', privateKey: '' }))}
+                    className={`flex-1 px-3 py-2 text-sm rounded-md border ${
+                      importData.importType === 'mnemonic'
+                        ? 'bg-blue-50 border-blue-300 text-blue-700'
+                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    Seed Phrase
+                  </button>
+                </div>
+              </div>
+
+              {/* Input Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Private Key
+                  {importData.importType === 'privateKey' ? 'Private Key' : 'Seed Phrase'}
                 </label>
                 <textarea
                   value={importData.privateKey}
                   onChange={(e) => setImportData(prev => ({ ...prev, privateKey: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm"
-                  placeholder="0x..."
-                  rows={3}
+                  placeholder={importData.importType === 'privateKey' ? '0x...' : 'word1 word2 word3...'}
+                  rows={importData.importType === 'privateKey' ? 3 : 4}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {importData.importType === 'privateKey' 
+                    ? 'Enter the private key (64 hex characters)'
+                    : 'Enter your 12-word seed phrase separated by spaces'
+                  }
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -257,7 +305,7 @@ export function AccountManager() {
                 <button
                   onClick={() => {
                     setShowImportForm(false);
-                    setImportData({ privateKey: '', name: '' });
+                    setImportData({ privateKey: '', name: '', importType: 'privateKey' });
                     setError('');
                   }}
                   className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"

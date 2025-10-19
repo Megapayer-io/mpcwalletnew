@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { EvmWallet, Network, SendEthParams, SendErc20Params, TokenBalanceParams } from '@evm-wallet/sdk';
+import { EvmWallet, Network, SendEthParams, SendErc20Params, TokenBalanceParams, Account, ImportAccountParams, CreateAccountParams } from '@evm-wallet/sdk';
 
 interface WalletStore {
   // State
@@ -8,6 +8,8 @@ interface WalletStore {
   hasWallet: boolean;
   isUnlocked: boolean;
   address: string | null;
+  currentAccount: Account | null;
+  accounts: Account[];
   currentNetwork: Network | null;
   networks: Network[];
   balance: string | null;
@@ -29,6 +31,13 @@ interface WalletStore {
   getTokenBalance: (params: TokenBalanceParams) => Promise<string>;
   clearError: () => void;
   logout: () => void;
+  
+  // Account management
+  switchAccount: (address: string) => void;
+  createAccount: (params: CreateAccountParams) => Account;
+  importAccount: (params: ImportAccountParams) => Promise<Account>;
+  removeAccount: (address: string) => void;
+  exportPrivateKey: (address: string) => string;
 }
 
 export const useWalletStore = create<WalletStore>((set, get) => ({
@@ -38,6 +47,8 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   hasWallet: false,
   isUnlocked: false,
   address: null,
+  currentAccount: null,
+  accounts: [],
   currentNetwork: null,
   networks: [],
   balance: null,
@@ -55,6 +66,8 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       hasWallet: wallet.hasKeystore(),
       isUnlocked: wallet.isUnlocked(),
       address: wallet.getAddress() || null,
+      currentAccount: wallet.getCurrentAccount() || null,
+      accounts: wallet.getAccounts(),
       currentNetwork: wallet.getCurrentNetwork() || null,
       networks: wallet.listNetworks(),
     });
@@ -286,10 +299,76 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       hasWallet: false,
       isUnlocked: false,
       address: null,
+      currentAccount: null,
+      accounts: [],
       currentNetwork: null,
       networks: wallet.listNetworks(),
       balance: null,
       error: null,
     });
+  },
+
+  // Account management
+  switchAccount: (address: string) => {
+    const { wallet } = get();
+    if (!wallet) return;
+
+    wallet.switchAccount(address);
+    set({
+      currentAccount: wallet.getCurrentAccount() || null,
+      address: wallet.getAddress() || null,
+    });
+  },
+
+  createAccount: (params: CreateAccountParams) => {
+    const { wallet } = get();
+    if (!wallet) throw new Error('Wallet not initialized');
+
+    const newAccount = wallet.createAccount(params);
+    set({
+      accounts: wallet.getAccounts(),
+    });
+    return newAccount;
+  },
+
+  importAccount: async (params: ImportAccountParams) => {
+    const { wallet } = get();
+    if (!wallet) throw new Error('Wallet not initialized');
+
+    set({ isLoading: true, error: null });
+    
+    try {
+      const newAccount = wallet.importAccount(params);
+      set({
+        accounts: wallet.getAccounts(),
+        isLoading: false,
+      });
+      return newAccount;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to import account',
+        isLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  removeAccount: (address: string) => {
+    const { wallet } = get();
+    if (!wallet) return;
+
+    wallet.removeAccount(address);
+    set({
+      accounts: wallet.getAccounts(),
+      currentAccount: wallet.getCurrentAccount() || null,
+      address: wallet.getAddress() || null,
+    });
+  },
+
+  exportPrivateKey: (address: string) => {
+    const { wallet } = get();
+    if (!wallet) throw new Error('Wallet not initialized');
+
+    return wallet.exportPrivateKey(address);
   },
 }));

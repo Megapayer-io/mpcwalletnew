@@ -14,9 +14,17 @@ export interface Keystore {
   iterations: number;
 }
 
+export interface Account {
+  address: string;
+  name: string;
+  isImported: boolean;
+  index?: number; // For derived accounts
+}
+
 export interface WalletState {
   isUnlocked: boolean;
-  address?: string;
+  currentAccount?: Account;
+  accounts: Account[];
   currentNetwork?: Network;
   networks: Network[];
 }
@@ -45,4 +53,13 @@ export interface AddNetworkParams {
   rpcUrl: string;
   symbol: string;
   blockExplorer?: string;
+}
+
+export interface ImportAccountParams {
+  privateKey: string;
+  name: string;
+}
+
+export interface CreateAccountParams {
+  name: string;
 }

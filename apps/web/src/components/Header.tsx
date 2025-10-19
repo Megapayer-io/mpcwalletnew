@@ -7,6 +7,35 @@ import { Wallet, Lock, Unlock } from 'lucide-react';
 export function Header() {
   const { isUnlocked, address, currentNetwork, lock, logout } = useWalletStore();
 
+  const clearAllData = () => {
+    if (confirm('Are you sure you want to clear all wallet data? This will remove all accounts and networks.')) {
+      // Debug: Log what's in localStorage
+      console.log('Current localStorage contents:');
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          console.log(`${key}:`, localStorage.getItem(key));
+        }
+      }
+      
+      // Clear all localStorage keys related to the wallet
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('evm-wallet') || key.includes('wallet'))) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      console.log('Removing keys:', keysToRemove);
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      localStorage.clear(); // Clear everything as backup
+      
+      // Force reload
+      window.location.href = '/';
+    }
+  };
+
   return (
     <header className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -40,6 +69,15 @@ export function Header() {
           </nav>
 
           <div className="flex items-center space-x-4">
+            {/* Debug button - remove in production */}
+            <button
+              onClick={clearAllData}
+              className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200"
+              title="Clear all wallet data (debug)"
+            >
+              Clear Data
+            </button>
+            
             {isUnlocked && address && (
               <div className="flex items-center space-x-2">
                 <div className="text-sm text-gray-600">

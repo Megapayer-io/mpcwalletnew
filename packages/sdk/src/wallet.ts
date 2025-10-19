@@ -1,22 +1,25 @@
 import { createWalletClient, createPublicClient, http, parseEther, formatEther, getContract } from 'viem';
-import { mnemonicToAccount } from 'viem/accounts';
+import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 import { generateMnemonic, validateMnemonic } from 'bip39';
 import { encrypt, decrypt } from './crypto.js';
 import { Keystore } from './types.js';
-import { Network, WalletState, SendEthParams, SendErc20Params, TokenBalanceParams, AddNetworkParams } from './types.js';
+import { Network, WalletState, SendEthParams, SendErc20Params, TokenBalanceParams, AddNetworkParams, Account, ImportAccountParams, CreateAccountParams } from './types.js';
 import { loadNetworks, saveNetworks, addNetwork as addNetworkUtil, findNetwork } from './networks.js';
 
 const KEYSTORE_STORAGE_KEY = 'evm-wallet-keystore';
 const STATE_STORAGE_KEY = 'evm-wallet-state';
+const ACCOUNTS_STORAGE_KEY = 'evm-wallet-accounts';
 
 export class EvmWallet {
   private state: WalletState;
   private privateKey?: `0x${string}`;
   private account?: any;
+  private accounts: Map<string, { account: any; privateKey: string }> = new Map();
 
   constructor() {
     this.state = {
       isUnlocked: false,
+      accounts: [],
       networks: loadNetworks(),
       currentNetwork: loadNetworks()[0] // Default to first network
     };
@@ -41,9 +44,25 @@ export class EvmWallet {
     this.account = mnemonicToAccount(mnemonic);
     this.privateKey = this.account.source as `0x${string}`;
     
-    this.state.address = this.account.address;
+    // Create the first account
+    const firstAccount: Account = {
+      address: this.account.address,
+      name: 'Account 1',
+      isImported: false,
+      index: 0
+    };
+
+    // Store account data
+    this.accounts.set(this.account.address.toLowerCase(), {
+      account: this.account,
+      privateKey: this.privateKey
+    });
+
+    this.state.accounts = [firstAccount];
+    this.state.currentAccount = firstAccount;
     this.state.isUnlocked = true;
     
+    this.saveAccounts();
     this.saveState();
     
     return {
@@ -59,7 +78,7 @@ export class EvmWallet {
     this.privateKey = undefined;
     this.account = undefined;
     this.state.isUnlocked = false;
-    this.state.address = undefined;
+    this.state.currentAccount = undefined;
     this.saveState();
   }
 
@@ -74,7 +93,25 @@ export class EvmWallet {
 
     try {
       const decryptedMnemonic = await decrypt(keystore, password);
-      await this.importFromMnemonic(decryptedMnemonic);
+      
+      // Restore the first account from mnemonic
+      this.account = mnemonicToAccount(decryptedMnemonic);
+      this.privateKey = this.account.source as `0x${string}`;
+      
+      // Load accounts data
+      this.loadAccounts();
+      
+      // Set current account if available
+      if (this.state.currentAccount) {
+        const accountData = this.accounts.get(this.state.currentAccount.address.toLowerCase());
+        if (accountData) {
+          this.account = accountData.account;
+          this.privateKey = accountData.privateKey as `0x${string}`;
+        }
+      }
+      
+      this.state.isUnlocked = true;
+      this.saveState();
     } catch (error) {
       throw new Error('Invalid password');
     }
@@ -106,7 +143,183 @@ export class EvmWallet {
    * Get current wallet address
    */
   getAddress(): string | undefined {
-    return this.state.address;
+    return this.state.currentAccount?.address;
+  }
+
+  /**
+   * Get all accounts
+   */
+  getAccounts(): Account[] {
+    return this.state.accounts;
+  }
+
+  /**
+   * Get current account
+   */
+  getCurrentAccount(): Account | undefined {
+    return this.state.currentAccount;
+  }
+
+  /**
+   * Switch to a different account
+   */
+  switchAccount(address: string): void {
+    const account = this.state.accounts.find(acc => acc.address.toLowerCase() === address.toLowerCase());
+    if (!account) {
+      throw new Error('Account not found');
+    }
+
+    const accountData = this.accounts.get(address.toLowerCase());
+    if (!accountData) {
+      throw new Error('Account data not found');
+    }
+
+    this.state.currentAccount = account;
+    this.account = accountData.account;
+    this.privateKey = accountData.privateKey as `0x${string}`;
+    this.saveState();
+  }
+
+  /**
+   * Create a new account from the current mnemonic
+   */
+  createAccount(params: CreateAccountParams): Account {
+    if (!this.state.isUnlocked) {
+      throw new Error('Wallet must be unlocked to create accounts');
+    }
+
+    // Get the next account index
+    const nextIndex = this.state.accounts.filter(acc => !acc.isImported).length;
+    
+    // Derive account from mnemonic
+    const mnemonic = this.getMnemonic(); // We'll need to add this method
+    const derivedAccount = mnemonicToAccount(mnemonic, { addressIndex: nextIndex });
+    
+    const newAccount: Account = {
+      address: derivedAccount.address,
+      name: params.name || `Account ${nextIndex + 1}`,
+      isImported: false,
+      index: nextIndex
+    };
+
+    // Store account data
+    this.accounts.set(derivedAccount.address.toLowerCase(), {
+      account: derivedAccount,
+      privateKey: derivedAccount.source as string
+    });
+
+    // Add to accounts list
+    this.state.accounts.push(newAccount);
+    this.saveAccounts();
+    this.saveState();
+
+    return newAccount;
+  }
+
+  /**
+   * Import an account from private key
+   */
+  importAccount(params: ImportAccountParams): Account {
+    if (!this.state.isUnlocked) {
+      throw new Error('Wallet must be unlocked to import accounts');
+    }
+
+    try {
+      // Ensure private key is properly formatted
+      let formattedPrivateKey = params.privateKey.trim();
+      if (!formattedPrivateKey.startsWith('0x')) {
+        formattedPrivateKey = `0x${formattedPrivateKey}`;
+      }
+      
+      const account = privateKeyToAccount(formattedPrivateKey as `0x${string}`);
+      
+      // Check if account already exists
+      const existingAccount = this.state.accounts.find(acc => 
+        acc.address.toLowerCase() === account.address.toLowerCase()
+      );
+      
+      if (existingAccount) {
+        throw new Error('Account already exists');
+      }
+
+      const newAccount: Account = {
+        address: account.address,
+        name: params.name || `Imported Account`,
+        isImported: true
+      };
+
+      // Store account data with properly formatted private key
+      this.accounts.set(account.address.toLowerCase(), {
+        account: account,
+        privateKey: formattedPrivateKey
+      });
+
+      // Add to accounts list
+      this.state.accounts.push(newAccount);
+      this.saveAccounts();
+      this.saveState();
+
+      return newAccount;
+    } catch (error) {
+      throw new Error('Invalid private key');
+    }
+  }
+
+  /**
+   * Remove an account
+   */
+  removeAccount(address: string): void {
+    if (this.state.accounts.length <= 1) {
+      throw new Error('Cannot remove the last account');
+    }
+
+    const accountIndex = this.state.accounts.findIndex(acc => 
+      acc.address.toLowerCase() === address.toLowerCase()
+    );
+
+    if (accountIndex === -1) {
+      throw new Error('Account not found');
+    }
+
+    // Remove from accounts list
+    this.state.accounts.splice(accountIndex, 1);
+    
+    // Remove from accounts map
+    this.accounts.delete(address.toLowerCase());
+
+    // If we removed the current account, switch to the first remaining account
+    if (this.state.currentAccount?.address.toLowerCase() === address.toLowerCase()) {
+      const firstAccount = this.state.accounts[0];
+      this.switchAccount(firstAccount.address);
+    }
+
+    this.saveAccounts();
+    this.saveState();
+  }
+
+  /**
+   * Export private key for an account
+   */
+  exportPrivateKey(address: string): string {
+    if (!this.state.isUnlocked) {
+      throw new Error('Wallet must be unlocked to export private key');
+    }
+
+    const accountData = this.accounts.get(address.toLowerCase());
+    if (!accountData) {
+      throw new Error('Account not found');
+    }
+
+    return accountData.privateKey;
+  }
+
+  /**
+   * Get mnemonic (only for main account)
+   */
+  private getMnemonic(): string {
+    // This would need to be stored securely when the wallet is created
+    // For now, we'll throw an error as this needs to be implemented properly
+    throw new Error('Mnemonic access not implemented yet');
   }
 
   /**
@@ -160,7 +373,7 @@ export class EvmWallet {
       throw new Error('No network selected');
     }
 
-    const targetAddress = address || this.state.address;
+    const targetAddress = address || this.state.currentAccount?.address;
     if (!targetAddress) {
       throw new Error('No address available');
     }
@@ -295,7 +508,7 @@ export class EvmWallet {
       throw new Error('No network selected');
     }
 
-    const targetAddress = params.address || this.state.address;
+    const targetAddress = params.address || this.state.currentAccount?.address;
     if (!targetAddress) {
       throw new Error('No address available');
     }
@@ -374,6 +587,58 @@ export class EvmWallet {
   }
 
   /**
+   * Save accounts data (encrypted)
+   */
+  private saveAccounts(): void {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const accountsData = Array.from(this.accounts.entries()).map(([address, data]) => ({
+        address,
+        privateKey: data.privateKey
+      }));
+      
+      localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accountsData));
+    } catch (error) {
+      console.error('Failed to save accounts:', error);
+    }
+  }
+
+  /**
+   * Load accounts data (encrypted)
+   */
+  private loadAccounts(): void {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const stored = localStorage.getItem(ACCOUNTS_STORAGE_KEY);
+      if (stored) {
+        const accountsData = JSON.parse(stored);
+        accountsData.forEach(({ address, privateKey }: { address: string; privateKey: string }) => {
+          try {
+            // Ensure private key is properly formatted
+            let formattedPrivateKey = privateKey;
+            if (!privateKey.startsWith('0x')) {
+              formattedPrivateKey = `0x${privateKey}`;
+            }
+            
+            const account = privateKeyToAccount(formattedPrivateKey as `0x${string}`);
+            this.accounts.set(address.toLowerCase(), {
+              account,
+              privateKey: formattedPrivateKey
+            });
+          } catch (keyError) {
+            console.error(`Failed to load account ${address}:`, keyError);
+            // Skip this account if the private key is invalid
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load accounts:', error);
+    }
+  }
+
+  /**
    * Load wallet state
    */
   loadState(): void {
@@ -389,6 +654,9 @@ export class EvmWallet {
           isUnlocked: false // Always start locked
         };
       }
+      
+      // Load accounts data
+      this.loadAccounts();
     } catch (error) {
       console.error('Failed to load wallet state:', error);
     }
@@ -402,10 +670,13 @@ export class EvmWallet {
     
     localStorage.removeItem(KEYSTORE_STORAGE_KEY);
     localStorage.removeItem(STATE_STORAGE_KEY);
+    localStorage.removeItem(ACCOUNTS_STORAGE_KEY);
     localStorage.removeItem('evm-wallet-networks');
     
+    this.accounts.clear();
     this.state = {
       isUnlocked: false,
+      accounts: [],
       networks: loadNetworks(),
       currentNetwork: loadNetworks()[0]
     };

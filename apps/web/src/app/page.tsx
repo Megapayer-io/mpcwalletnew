@@ -6,6 +6,7 @@ import { useWalletStore } from '@/store/wallet';
 import { Header } from '@/components/Header';
 import { UnlockModal } from '@/components/UnlockModal';
 import { TokenList } from '@/components/TokenList';
+import { AccountManager } from '@/components/AccountManager';
 import { Wallet, Copy, RefreshCw, ExternalLink } from 'lucide-react';
 
 export default function Dashboard() {
@@ -109,7 +110,7 @@ export default function Dashboard() {
           <p className="text-gray-600">Manage your wallet and view your balances</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Wallet Info */}
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Wallet Information</h2>
@@ -135,19 +136,21 @@ export default function Dashboard() {
                 </label>
                 <div className="flex items-center space-x-2">
                   <span className="font-mono text-sm bg-gray-100 px-3 py-2 rounded-md flex-1">
-                    {address}
+                    {address || 'No wallet connected'}
                   </span>
-                  <button
-                    onClick={handleCopyAddress}
-                    className="p-2 text-gray-400 hover:text-gray-600"
-                    title="Copy address"
-                  >
-                    {copied ? (
-                      <span className="text-green-600 text-xs">Copied!</span>
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </button>
+                  {address && (
+                    <button
+                      onClick={handleCopyAddress}
+                      className="p-2 text-gray-400 hover:text-gray-600"
+                      title="Copy address"
+                    >
+                      {copied ? (
+                        <span className="text-green-600 text-xs">Copied!</span>
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -163,18 +166,20 @@ export default function Dashboard() {
                       `${balance || '0'} ${currentNetwork?.symbol || 'ETH'}`
                     )}
                   </span>
-                  <button
-                    onClick={handleRefreshBalance}
-                    disabled={isLoading}
-                    className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-                    title="Refresh balance"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  </button>
+                  {address && (
+                    <button
+                      onClick={handleRefreshBalance}
+                      disabled={isLoading}
+                      className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                      title="Refresh balance"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {currentNetwork?.blockExplorer && (
+              {currentNetwork?.blockExplorer && address && (
                 <div>
                   <a
                     href={`${currentNetwork.blockExplorer}/address/${address}`}
@@ -194,6 +199,11 @@ export default function Dashboard() {
                 <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
+          </div>
+
+          {/* Account Manager */}
+          <div>
+            <AccountManager />
           </div>
 
           {/* Token List */}

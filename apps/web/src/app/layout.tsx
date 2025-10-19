@@ -6,8 +6,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'EVM Wallet',
-  description: 'A minimal EVM wallet built with Next.js and wagmi',
+  title: 'MPC Wallet',
+  description: 'A minimal MPC wallet built with Next.js and wagmi',
 };
 
 export default function RootLayout({

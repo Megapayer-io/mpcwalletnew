@@ -22,7 +22,7 @@ export function Header() {
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.includes('evm-wallet') || key.includes('wallet'))) {
+        if (key && (key.includes('mpc-wallet') || key.includes('wallet'))) {
           keysToRemove.push(key);
         }
       }
@@ -43,7 +43,7 @@ export function Header() {
           <div className="flex items-center space-x-4">
             <Link href="/" className="flex items-center space-x-2">
               <Wallet className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">EVM Wallet</span>
+              <span className="text-xl font-bold text-gray-900">MPC Wallet</span>
             </Link>
           </div>
 

@@ -80,7 +80,7 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="text-center">
             <Wallet className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to EVM Wallet</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to MPC Wallet</h1>
             <p className="text-gray-600 mb-8">
               Your wallet is locked. Please unlock it to continue.
             </p>

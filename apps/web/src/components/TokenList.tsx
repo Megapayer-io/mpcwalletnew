@@ -28,7 +28,7 @@ export function TokenList() {
 
   // Load tokens from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem('evm-wallet-tokens');
+    const stored = localStorage.getItem('mpc-wallet-tokens');
     if (stored) {
       try {
         setTokens(JSON.parse(stored));
@@ -40,7 +40,7 @@ export function TokenList() {
 
   // Save tokens to localStorage
   const saveTokens = (newTokens: Token[]) => {
-    localStorage.setItem('evm-wallet-tokens', JSON.stringify(newTokens));
+    localStorage.setItem('mpc-wallet-tokens', JSON.stringify(newTokens));
     setTokens(newTokens);
   };
 

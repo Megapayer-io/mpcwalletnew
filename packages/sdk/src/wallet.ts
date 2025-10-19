@@ -15,6 +15,7 @@ export class EvmWallet {
   private privateKey?: `0x${string}`;
   private account?: any;
   private accounts: Map<string, { account: any; privateKey: string }> = new Map();
+  private mnemonic?: string;
 
   constructor() {
     this.state = {
@@ -41,6 +42,7 @@ export class EvmWallet {
       throw new Error('Invalid mnemonic phrase');
     }
 
+    this.mnemonic = mnemonic; // Store the mnemonic
     this.account = mnemonicToAccount(mnemonic);
     this.privateKey = this.account.source as `0x${string}`;
     
@@ -77,6 +79,7 @@ export class EvmWallet {
   lock(): void {
     this.privateKey = undefined;
     this.account = undefined;
+    this.mnemonic = undefined; // Clear mnemonic from memory
     this.state.isUnlocked = false;
     this.state.currentAccount = undefined;
     this.saveState();
@@ -93,6 +96,9 @@ export class EvmWallet {
 
     try {
       const decryptedMnemonic = await decrypt(keystore, password);
+      
+      // Store the mnemonic for account creation
+      this.mnemonic = decryptedMnemonic;
       
       // Restore the first account from mnemonic
       this.account = mnemonicToAccount(decryptedMnemonic);
@@ -317,9 +323,10 @@ export class EvmWallet {
    * Get mnemonic (only for main account)
    */
   private getMnemonic(): string {
-    // This would need to be stored securely when the wallet is created
-    // For now, we'll throw an error as this needs to be implemented properly
-    throw new Error('Mnemonic access not implemented yet');
+    if (!this.mnemonic) {
+      throw new Error('Mnemonic not available. Wallet must be unlocked to create accounts.');
+    }
+    return this.mnemonic;
   }
 
   /**

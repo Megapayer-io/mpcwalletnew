@@ -1,10 +1,54 @@
 import { createWalletClient, createPublicClient, http, parseEther, formatEther, getContract } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
-import { generateMnemonic, validateMnemonic } from 'bip39';
+import { generateMnemonic, validateMnemonic, mnemonicToSeedSync } from 'bip39';
+import { HDKey } from '@scure/bip32';
 import { encrypt, decrypt } from './crypto.js';
 import { Keystore } from './types.js';
 import { Network, WalletState, SendEthParams, SendErc20Params, TokenBalanceParams, AddNetworkParams, Account, ImportAccountParams, CreateAccountParams } from './types.js';
 import { loadNetworks, saveNetworks, addNetwork as addNetworkUtil, findNetwork } from './networks.js';
+
+/**
+ * Validate and format a private key
+ */
+function validateAndFormatPrivateKey(privateKey: string): string {
+  if (!privateKey || typeof privateKey !== 'string') {
+    throw new Error('Private key must be a non-empty string');
+  }
+
+  let formattedPrivateKey = privateKey.trim();
+  
+  // Remove 0x prefix if present for validation
+  const cleanKey = formattedPrivateKey.startsWith('0x') 
+    ? formattedPrivateKey.slice(2) 
+    : formattedPrivateKey;
+  
+  // Validate hex format and length (64 characters for 32 bytes)
+  if (!/^[0-9a-fA-F]{64}$/.test(cleanKey)) {
+    throw new Error('Private key must be 64 hex characters (32 bytes)');
+  }
+  
+  // Ensure 0x prefix
+  if (!formattedPrivateKey.startsWith('0x')) {
+    formattedPrivateKey = `0x${formattedPrivateKey}`;
+  }
+  
+  return formattedPrivateKey;
+}
+
+/**
+ * Derive private key from mnemonic and account index
+ */
+function derivePrivateKeyFromMnemonic(mnemonic: string, accountIndex: number = 0): string {
+  const seed = mnemonicToSeedSync(mnemonic);
+  const root = HDKey.fromMasterSeed(seed);
+  const derived = root.derive(`m/44'/60'/0'/0/${accountIndex}`);
+  
+  if (!derived.privateKey) {
+    throw new Error('Failed to derive private key from mnemonic');
+  }
+  
+  return `0x${Buffer.from(derived.privateKey).toString('hex')}`;
+}
 
 const KEYSTORE_STORAGE_KEY = 'evm-wallet-keystore';
 const STATE_STORAGE_KEY = 'evm-wallet-state';
@@ -43,8 +87,12 @@ export class EvmWallet {
     }
 
     this.mnemonic = mnemonic; // Store the mnemonic
-    this.account = mnemonicToAccount(mnemonic);
-    this.privateKey = this.account.source as `0x${string}`;
+    
+    // Derive the private key properly
+    this.privateKey = derivePrivateKeyFromMnemonic(mnemonic, 0) as `0x${string}`;
+    
+    // Create account from the derived private key
+    this.account = privateKeyToAccount(this.privateKey);
     
     // Create the first account
     const firstAccount: Account = {
@@ -54,7 +102,7 @@ export class EvmWallet {
       index: 0
     };
 
-    // Store account data
+    // Store account data with properly derived private key
     this.accounts.set(this.account.address.toLowerCase(), {
       account: this.account,
       privateKey: this.privateKey
@@ -100,9 +148,11 @@ export class EvmWallet {
       // Store the mnemonic for account creation
       this.mnemonic = decryptedMnemonic;
       
-      // Restore the first account from mnemonic
-      this.account = mnemonicToAccount(decryptedMnemonic);
-      this.privateKey = this.account.source as `0x${string}`;
+      // Derive the private key properly
+      this.privateKey = derivePrivateKeyFromMnemonic(decryptedMnemonic, 0) as `0x${string}`;
+      
+      // Create account from the derived private key
+      this.account = privateKeyToAccount(this.privateKey);
       
       // Load accounts data
       this.loadAccounts();
@@ -197,9 +247,10 @@ export class EvmWallet {
     // Get the next account index
     const nextIndex = this.state.accounts.filter(acc => !acc.isImported).length;
     
-    // Derive account from mnemonic
-    const mnemonic = this.getMnemonic(); // We'll need to add this method
-    const derivedAccount = mnemonicToAccount(mnemonic, { addressIndex: nextIndex });
+    // Derive private key from mnemonic
+    const mnemonic = this.getMnemonic();
+    const derivedPrivateKey = derivePrivateKeyFromMnemonic(mnemonic, nextIndex) as `0x${string}`;
+    const derivedAccount = privateKeyToAccount(derivedPrivateKey);
     
     const newAccount: Account = {
       address: derivedAccount.address,
@@ -208,10 +259,10 @@ export class EvmWallet {
       index: nextIndex
     };
 
-    // Store account data
+    // Store account data with properly derived private key
     this.accounts.set(derivedAccount.address.toLowerCase(), {
       account: derivedAccount,
-      privateKey: derivedAccount.source as string
+      privateKey: derivedPrivateKey
     });
 
     // Add to accounts list
@@ -231,12 +282,7 @@ export class EvmWallet {
     }
 
     try {
-      // Ensure private key is properly formatted
-      let formattedPrivateKey = params.privateKey.trim();
-      if (!formattedPrivateKey.startsWith('0x')) {
-        formattedPrivateKey = `0x${formattedPrivateKey}`;
-      }
-      
+      const formattedPrivateKey = validateAndFormatPrivateKey(params.privateKey);
       const account = privateKeyToAccount(formattedPrivateKey as `0x${string}`);
       
       // Check if account already exists
@@ -267,7 +313,7 @@ export class EvmWallet {
 
       return newAccount;
     } catch (error) {
-      throw new Error('Invalid private key');
+      throw new Error(error instanceof Error ? error.message : 'Invalid private key');
     }
   }
 
@@ -623,12 +669,7 @@ export class EvmWallet {
         const accountsData = JSON.parse(stored);
         accountsData.forEach(({ address, privateKey }: { address: string; privateKey: string }) => {
           try {
-            // Ensure private key is properly formatted
-            let formattedPrivateKey = privateKey;
-            if (!privateKey.startsWith('0x')) {
-              formattedPrivateKey = `0x${privateKey}`;
-            }
-            
+            const formattedPrivateKey = validateAndFormatPrivateKey(privateKey);
             const account = privateKeyToAccount(formattedPrivateKey as `0x${string}`);
             this.accounts.set(address.toLowerCase(), {
               account,
@@ -687,5 +728,23 @@ export class EvmWallet {
       networks: loadNetworks(),
       currentNetwork: loadNetworks()[0]
     };
+  }
+
+  /**
+   * Clear corrupted account data (for debugging)
+   */
+  clearCorruptedAccounts(): void {
+    if (typeof window === 'undefined') return;
+    
+    console.log('Clearing corrupted account data...');
+    localStorage.removeItem(ACCOUNTS_STORAGE_KEY);
+    this.accounts.clear();
+    
+    // Reset accounts in state
+    this.state.accounts = [];
+    this.state.currentAccount = undefined;
+    this.saveState();
+    
+    console.log('Corrupted account data cleared');
   }
 }

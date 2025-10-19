@@ -38,6 +38,7 @@ interface WalletStore {
   importAccount: (params: ImportAccountParams) => Promise<Account>;
   removeAccount: (address: string) => void;
   exportPrivateKey: (address: string) => string;
+  clearCorruptedAccounts: () => void;
 }
 
 export const useWalletStore = create<WalletStore>((set, get) => ({
@@ -370,5 +371,17 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     if (!wallet) throw new Error('Wallet not initialized');
 
     return wallet.exportPrivateKey(address);
+  },
+
+  clearCorruptedAccounts: () => {
+    const { wallet } = get();
+    if (!wallet) return;
+
+    wallet.clearCorruptedAccounts();
+    set({
+      accounts: wallet.getAccounts(),
+      currentAccount: wallet.getCurrentAccount() || null,
+      address: wallet.getAddress() || null,
+    });
   },
 }));

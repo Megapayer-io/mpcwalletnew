@@ -18,14 +18,15 @@
     "test": "vitest"
   },
   "dependencies": {
-    "viem": "^2.21.0",
-    "bip39": "^3.1.0"
+    "@scure/bip32": "^2.0.1",
+    "bip39": "^3.1.0",
+    "viem": "^2.21.0"
   },
   "devDependencies": {
     "@types/bip39": "^3.0.0",
-    "typescript": "^5",
-    "vitest": "^1.6.0",
+    "eslint": "^8",
     "jsdom": "^24.0.0",
-    "eslint": "^8"
+    "typescript": "^5",
+    "vitest": "^1.6.0"
   }
 }

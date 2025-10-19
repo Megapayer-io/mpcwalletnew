@@ -26,7 +26,8 @@ export function AccountManager() {
     importAccount,
     removeAccount,
     exportPrivateKey,
-    clearError
+    clearError,
+    clearCorruptedAccounts
   } = useWalletStore();
 
   const handleImportAccount = async () => {
@@ -111,6 +112,18 @@ export function AccountManager() {
     }
   };
 
+  const handleClearCorruptedData = () => {
+    try {
+      clearError();
+      clearCorruptedAccounts();
+      setError('');
+      // Force a page refresh to reload the wallet state
+      window.location.reload();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to clear corrupted data');
+    }
+  };
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
       <div className="flex items-center justify-between mb-6">
@@ -129,6 +142,13 @@ export function AccountManager() {
           >
             <Download className="h-4 w-4" />
             <span>Import</span>
+          </button>
+          <button
+            onClick={handleClearCorruptedData}
+            className="flex items-center space-x-1 px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+            title="Clear corrupted account data from localStorage"
+          >
+            <span>Clear Data</span>
           </button>
         </div>
       </div>

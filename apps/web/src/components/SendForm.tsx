@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWalletStore } from '@/store/wallet';
-import { Send, AlertCircle, ExternalLink } from 'lucide-react';
+import { Send, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 
 interface SendFormProps {
   type: 'eth' | 'token';
@@ -19,8 +19,49 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
   });
   const [txHash, setTxHash] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentBalance, setCurrentBalance] = useState<string>('0');
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   
-  const { sendEth, sendErc20, currentNetwork, error, clearError } = useWalletStore();
+  const { sendEth, sendErc20, getBalance, getTokenBalance, currentNetwork, error, clearError } = useWalletStore();
+
+  // Load balance on component mount and when token address changes
+  useEffect(() => {
+    loadBalance();
+  }, [type, tokenAddress]);
+
+  const loadBalance = async () => {
+    setIsLoadingBalance(true);
+    try {
+      if (type === 'eth') {
+        const balance = await getBalance();
+        setCurrentBalance(balance);
+      } else if (tokenAddress) {
+        const balance = await getTokenBalance({
+          tokenAddress,
+          decimals: tokenDecimals
+        });
+        setCurrentBalance(balance);
+      }
+    } catch (error) {
+      console.error('Failed to load balance:', error);
+      setCurrentBalance('0');
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
+  const handlePercentageClick = (percentage: number) => {
+    const balance = parseFloat(currentBalance);
+    if (balance > 0) {
+      const amount = (balance * percentage / 100).toString();
+      setFormData(prev => ({
+        ...prev,
+        amount: amount
+      }));
+      clearError();
+      setTxHash('');
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -63,6 +104,8 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
         amount: '',
         tokenAddress: tokenAddress || ''
       });
+      // Reload balance after successful transaction
+      loadBalance();
     } catch (error) {
       // Error is handled by the store
     } finally {
@@ -82,6 +125,34 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
           Send {type === 'eth' ? currentNetwork?.symbol || 'ETH' : tokenSymbol || 'Token'}
         </h2>
         
+        {/* Current Balance Display */}
+        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-gray-700">Current Balance</h3>
+              <p className="text-2xl font-bold text-gray-900">
+                {isLoadingBalance ? (
+                  <span className="flex items-center space-x-2">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Loading...</span>
+                  </span>
+                ) : (
+                  `${parseFloat(currentBalance).toFixed(6)} ${type === 'eth' ? currentNetwork?.symbol || 'ETH' : tokenSymbol || 'Token'}`
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={loadBalance}
+              disabled={isLoadingBalance}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+              title="Refresh balance"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoadingBalance ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="to" className="block text-sm font-medium text-gray-700 mb-1">
@@ -131,11 +202,52 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
               placeholder="0.0"
               step="any"
               min="0"
+              max={currentBalance}
               required
             />
             <p className="text-xs text-gray-500 mt-1">
               {type === 'eth' ? currentNetwork?.symbol || 'ETH' : tokenSymbol || 'Token'} amount
             </p>
+            {formData.amount && parseFloat(formData.amount) > parseFloat(currentBalance) && (
+              <p className="text-xs text-red-500 mt-1">
+                ⚠️ Amount exceeds available balance
+              </p>
+            )}
+            
+            {/* Percentage Buttons */}
+            <div className="mt-3">
+              <p className="text-xs text-gray-500 mb-2">Quick select:</p>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handlePercentageClick(25)}
+                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  25%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePercentageClick(50)}
+                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  50%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePercentageClick(75)}
+                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  75%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePercentageClick(100)}
+                  className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors font-medium"
+                >
+                  MAX
+                </button>
+              </div>
+            </div>
           </div>
 
           {error && (
@@ -172,7 +284,7 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
 
           <button
             type="submit"
-            disabled={isLoading || !formData.to || !formData.amount}
+            disabled={isLoading || !formData.to || !formData.amount || parseFloat(formData.amount) > parseFloat(currentBalance)}
             className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="h-4 w-4" />

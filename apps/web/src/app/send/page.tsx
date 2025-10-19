@@ -1,14 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWalletStore } from '@/store/wallet';
 import { Header } from '@/components/Header';
 import { SendForm } from '@/components/SendForm';
-import { Send, Coins, AlertCircle } from 'lucide-react';
+import { Send, Coins, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function SendPage() {
   const [activeTab, setActiveTab] = useState<'eth' | 'token'>('eth');
-  const { isUnlocked, currentNetwork } = useWalletStore();
+  const [ethBalance, setEthBalance] = useState<string>('0');
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const { isUnlocked, currentNetwork, getBalance } = useWalletStore();
+
+  // Load ETH balance on component mount
+  useEffect(() => {
+    if (isUnlocked) {
+      loadEthBalance();
+    }
+  }, [isUnlocked]);
+
+  const loadEthBalance = async () => {
+    setIsLoadingBalance(true);
+    try {
+      const balance = await getBalance();
+      setEthBalance(balance);
+    } catch (error) {
+      console.error('Failed to load ETH balance:', error);
+      setEthBalance('0');
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
 
   if (!isUnlocked) {
     return (
@@ -35,6 +57,36 @@ export default function SendPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Send Transaction</h1>
           <p className="text-gray-600">Send native tokens or ERC-20 tokens</p>
+        </div>
+
+        {/* Balance Overview */}
+        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Available Balance</h3>
+              <p className="text-3xl font-bold text-blue-600">
+                {isLoadingBalance ? (
+                  <span className="flex items-center space-x-2">
+                    <RefreshCw className="h-6 w-6 animate-spin" />
+                    <span>Loading...</span>
+                  </span>
+                ) : (
+                  `${parseFloat(ethBalance).toFixed(6)} ${currentNetwork?.symbol || 'ETH'}`
+                )}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                {currentNetwork?.name} Network
+              </p>
+            </div>
+            <button
+              onClick={loadEthBalance}
+              disabled={isLoadingBalance}
+              className="p-3 text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded-lg transition-colors"
+              title="Refresh balance"
+            >
+              <RefreshCw className={`h-5 w-5 ${isLoadingBalance ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
 
         {/* Tab Navigation */}

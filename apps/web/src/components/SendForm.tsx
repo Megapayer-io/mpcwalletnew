@@ -4,18 +4,22 @@ import { useState, useEffect } from 'react';
 import { useWalletStore } from '@/store/wallet';
 import { Send, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 
-interface SendFormProps {
-  type: 'eth' | 'token';
-  tokenAddress?: string;
-  tokenSymbol?: string;
-  tokenDecimals?: number;
+interface Token {
+  address: string;
+  symbol: string;
+  decimals: number;
+  name?: string;
 }
 
-export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }: SendFormProps) {
+interface SendFormProps {
+  selectedToken: Token;
+  onTokenChange: (token: Token) => void;
+}
+
+export function SendForm({ selectedToken, onTokenChange }: SendFormProps) {
   const [formData, setFormData] = useState({
     to: '',
-    amount: '',
-    tokenAddress: tokenAddress || ''
+    amount: ''
   });
   const [txHash, setTxHash] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,21 +28,23 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
   
   const { sendEth, sendErc20, getBalance, getTokenBalance, currentNetwork, error, clearError } = useWalletStore();
 
-  // Load balance on component mount and when token address changes
+  // Load balance when selected token changes
   useEffect(() => {
     loadBalance();
-  }, [type, tokenAddress]);
+  }, [selectedToken]);
 
   const loadBalance = async () => {
     setIsLoadingBalance(true);
     try {
-      if (type === 'eth') {
+      if (selectedToken.address === '') {
+        // Native token
         const balance = await getBalance();
         setCurrentBalance(balance);
-      } else if (tokenAddress) {
+      } else {
+        // ERC-20 token
         const balance = await getTokenBalance({
-          tokenAddress,
-          decimals: tokenDecimals
+          tokenAddress: selectedToken.address,
+          decimals: selectedToken.decimals
         });
         setCurrentBalance(balance);
       }
@@ -81,28 +87,26 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
     try {
       let hash: string;
 
-      if (type === 'eth') {
+      if (selectedToken.address === '') {
+        // Native token
         hash = await sendEth({
           to: formData.to,
           valueEth: formData.amount
         });
       } else {
-        if (!tokenAddress) {
-          throw new Error('Token address is required');
-        }
+        // ERC-20 token
         hash = await sendErc20({
-          tokenAddress,
+          tokenAddress: selectedToken.address,
           to: formData.to,
           amount: formData.amount,
-          decimals: tokenDecimals
+          decimals: selectedToken.decimals
         });
       }
 
       setTxHash(hash);
       setFormData({
         to: '',
-        amount: '',
-        tokenAddress: tokenAddress || ''
+        amount: ''
       });
       // Reload balance after successful transaction
       loadBalance();
@@ -119,11 +123,10 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Send {type === 'eth' ? currentNetwork?.symbol || 'ETH' : tokenSymbol || 'Token'}
-        </h2>
+    <div className="p-6">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">
+        Send {selectedToken.symbol}
+      </h2>
         
         {/* Current Balance Display */}
         <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
@@ -137,7 +140,7 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
                     <span>Loading...</span>
                   </span>
                 ) : (
-                  `${parseFloat(currentBalance).toFixed(6)} ${type === 'eth' ? currentNetwork?.symbol || 'ETH' : tokenSymbol || 'Token'}`
+                  `${parseFloat(currentBalance).toFixed(6)} ${selectedToken.symbol}`
                 )}
               </p>
             </div>
@@ -170,23 +173,6 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
             />
           </div>
 
-          {type === 'token' && !tokenAddress && (
-            <div>
-              <label htmlFor="tokenAddress" className="block text-sm font-medium text-gray-700 mb-1">
-                Token Contract Address *
-              </label>
-              <input
-                type="text"
-                id="tokenAddress"
-                name="tokenAddress"
-                value={formData.tokenAddress}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                placeholder="0x..."
-                required
-              />
-            </div>
-          )}
 
           <div>
             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
@@ -206,7 +192,7 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              {type === 'eth' ? currentNetwork?.symbol || 'ETH' : tokenSymbol || 'Token'} amount
+              {selectedToken.symbol} amount
             </p>
             {formData.amount && parseFloat(formData.amount) > parseFloat(currentBalance) && (
               <p className="text-xs text-red-500 mt-1">
@@ -291,7 +277,6 @@ export function SendForm({ type, tokenAddress, tokenSymbol, tokenDecimals = 18 }
             <span>{isLoading ? 'Sending...' : 'Send Transaction'}</span>
           </button>
         </form>
-      </div>
     </div>
   );
 }

@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { EvmWallet, Network, SendEthParams, SendErc20Params, TokenBalanceParams, Account, ImportAccountParams, CreateAccountParams } from '@evm-wallet/sdk';
 
+interface TokenPrice {
+  symbol: string;
+  price: number;
+  lastUpdated: number;
+}
+
 interface WalletStore {
   // State
   wallet: EvmWallet | null;
@@ -15,6 +21,7 @@ interface WalletStore {
   balance: string | null;
   isLoading: boolean;
   error: string | null;
+  tokenPrices: Record<string, TokenPrice>;
 
   // Actions
   initialize: () => void;
@@ -30,6 +37,9 @@ interface WalletStore {
   sendErc20: (params: SendErc20Params) => Promise<string>;
   getTokenBalance: (params: TokenBalanceParams) => Promise<string>;
   getTokenMetadata: (tokenAddress: string) => Promise<{ name: string; symbol: string; decimals: number }>;
+  getTokenPrice: (symbol: string) => Promise<number>;
+  getUsdBalance: (balance: string, symbol: string) => Promise<string>;
+  clearPriceCache: () => void;
   clearError: () => void;
   logout: () => void;
   
@@ -56,6 +66,7 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   balance: null,
   isLoading: false,
   error: null,
+  tokenPrices: {},
 
   // Actions
   initialize: () => {
@@ -404,4 +415,191 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       address: wallet.getAddress() || null,
     });
   },
+
+  getTokenPrice: async (symbol: string): Promise<number> => {
+    const { tokenPrices } = get();
+    const now = Date.now();
+    
+    // Check if we have a recent price (less than 1 minute old for real-time data)
+    const existingPrice = tokenPrices[symbol.toUpperCase()];
+    if (existingPrice && (now - existingPrice.lastUpdated) < 60 * 1000) {
+      return existingPrice.price;
+    }
+
+    // Try multiple APIs for real-time price data
+    const apis = [
+      // CoinGecko API
+      {
+        name: 'CoinGecko',
+        url: `https://api.coingecko.com/api/v3/simple/price?ids=${getCoinGeckoId(symbol)}&vs_currencies=usd`,
+        parser: (data: any) => data[getCoinGeckoId(symbol)]?.usd
+      },
+      // CoinCap API (alternative)
+      {
+        name: 'CoinCap',
+        url: `https://api.coincap.io/v2/assets/${getCoinCapId(symbol)}`,
+        parser: (data: any) => parseFloat(data.data?.priceUsd)
+      },
+      // CoinPaprika API (another alternative)
+      {
+        name: 'CoinPaprika',
+        url: `https://api.coinpaprika.com/v1/tickers/${getCoinPaprikaId(symbol)}`,
+        parser: (data: any) => data.quotes?.USD?.price
+      }
+    ];
+
+    for (const api of apis) {
+      try {
+        console.log(`Fetching real-time price for ${symbol} from ${api.name}`);
+        
+        const response = await fetch(api.url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log(`${api.name} API response:`, data);
+        
+        const price = api.parser(data);
+        
+        if (price !== undefined && price !== null && price > 0) {
+          console.log(`Real-time price for ${symbol} from ${api.name}: $${price}`);
+
+          // Update the price in store with real data
+          set({
+            tokenPrices: {
+              ...tokenPrices,
+              [symbol.toUpperCase()]: {
+                symbol: symbol.toUpperCase(),
+                price: price,
+                lastUpdated: now,
+              },
+            },
+          });
+
+          return price;
+        }
+      } catch (error) {
+        console.error(`Failed to fetch price from ${api.name}:`, error);
+        continue; // Try next API
+      }
+    }
+
+    // If all APIs fail, return cached price if available, otherwise throw error
+    if (existingPrice) {
+      console.log(`Using cached price for ${symbol}: $${existingPrice.price}`);
+      return existingPrice.price;
+    }
+    
+    throw new Error(`Unable to fetch real-time price for ${symbol} from any API`);
+  },
+
+  getUsdBalance: async (balance: string, symbol: string): Promise<string> => {
+    try {
+      console.log(`Calculating USD balance: ${balance} ${symbol}`);
+      const price = await get().getTokenPrice(symbol);
+      console.log(`Real-time price for ${symbol}: $${price}`);
+      const usdValue = parseFloat(balance) * price;
+      console.log(`USD value: ${balance} * ${price} = $${usdValue.toFixed(2)}`);
+      return usdValue.toFixed(2);
+    } catch (error) {
+      console.error('Failed to calculate USD balance:', error);
+      // Return null or throw error instead of fake 0.00
+      throw new Error(`Unable to calculate USD balance for ${symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+
+  // Clear cached prices to force refresh
+  clearPriceCache: () => {
+    set({ tokenPrices: {} });
+  },
 }));
+
+// Helper function to map token symbols to CoinGecko IDs
+function getCoinGeckoId(symbol: string): string {
+  const symbolMap: Record<string, string> = {
+    'ETH': 'ethereum',
+    'MATIC': 'matic-network',
+    'POL': 'matic-network',
+    'BNB': 'binancecoin',
+    'AVAX': 'avalanche-2',
+    'FTM': 'fantom',
+    'USDC': 'usd-coin',
+    'USDT': 'tether',
+    'DAI': 'dai',
+    'LINK': 'chainlink',
+    'UNI': 'uniswap',
+    'AAVE': 'aave',
+    'SUSHI': 'sushi',
+    'CRV': 'curve-dao-token',
+    'COMP': 'compound-governance-token',
+    'MKR': 'maker',
+    'SNX': 'havven',
+    'YFI': 'yearn-finance',
+    '1INCH': '1inch',
+    'BAT': 'basic-attention-token',
+    'ZRX': '0x',
+    'KNC': 'kyber-network-crystal',
+  };
+  
+  return symbolMap[symbol.toUpperCase()] || symbol.toLowerCase();
+}
+
+// Helper function to map token symbols to CoinCap IDs
+function getCoinCapId(symbol: string): string {
+  const symbolMap: Record<string, string> = {
+    'ETH': 'ethereum',
+    'MATIC': 'matic-network',
+    'POL': 'matic-network',
+    'BNB': 'binance-coin',
+    'AVAX': 'avalanche',
+    'USDC': 'usd-coin',
+    'USDT': 'tether',
+    'DAI': 'dai',
+    'LINK': 'chainlink',
+    'UNI': 'uniswap',
+    'AAVE': 'aave',
+    'SUSHI': 'sushi',
+    'CRV': 'curve-dao-token',
+    'COMP': 'compound-governance-token',
+    'MKR': 'maker',
+    'SNX': 'synthetix-network-token',
+    'YFI': 'yearn-finance',
+    '1INCH': '1inch',
+    'BAT': 'basic-attention-token',
+    'ZRX': '0x',
+    'KNC': 'kyber-network-crystal',
+  };
+  
+  return symbolMap[symbol.toUpperCase()] || symbol.toLowerCase();
+}
+
+// Helper function to map token symbols to CoinPaprika IDs
+function getCoinPaprikaId(symbol: string): string {
+  const symbolMap: Record<string, string> = {
+    'ETH': 'eth-ethereum',
+    'MATIC': 'matic-polygon',
+    'POL': 'matic-polygon',
+    'BNB': 'bnb-binance-coin',
+    'AVAX': 'avax-avalanche',
+    'USDC': 'usdc-usd-coin',
+    'USDT': 'usdt-tether',
+    'DAI': 'dai-dai',
+    'LINK': 'link-chainlink',
+    'UNI': 'uni-uniswap',
+    'AAVE': 'aave-aave',
+    'SUSHI': 'sushi-sushi',
+    'CRV': 'crv-curve-dao-token',
+    'COMP': 'comp-compound-governance-token',
+    'MKR': 'mkr-maker',
+    'SNX': 'snx-synthetix-network-token',
+    'YFI': 'yfi-yearn-finance',
+    '1INCH': '1inch-1inch',
+    'BAT': 'bat-basic-attention-token',
+    'ZRX': 'zrx-0x',
+    'KNC': 'knc-kyber-network-crystal',
+  };
+  
+  return symbolMap[symbol.toUpperCase()] || symbol.toLowerCase();
+}

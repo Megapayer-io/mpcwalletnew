@@ -14,6 +14,8 @@ export default function Dashboard() {
   const router = useRouter();
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [usdBalance, setUsdBalance] = useState<string>('0.00');
+  const [isLoadingUsd, setIsLoadingUsd] = useState(false);
   
   const {
     isInitialized,
@@ -23,6 +25,7 @@ export default function Dashboard() {
     currentNetwork,
     balance,
     getBalance,
+    getUsdBalance,
     isLoading,
     error
   } = useWalletStore();
@@ -44,6 +47,26 @@ export default function Dashboard() {
       getBalance();
     }
   }, [isUnlocked, address, getBalance]);
+
+  // Load USD balance when balance changes
+  useEffect(() => {
+    const loadUsdBalance = async () => {
+      if (balance && currentNetwork?.symbol) {
+        setIsLoadingUsd(true);
+        try {
+          const usd = await getUsdBalance(balance, currentNetwork.symbol);
+          setUsdBalance(usd);
+        } catch (error) {
+          console.error('Failed to load USD balance:', error);
+          setUsdBalance('0.00');
+        } finally {
+          setIsLoadingUsd(false);
+        }
+      }
+    };
+
+    loadUsdBalance();
+  }, [balance, currentNetwork?.symbol, getUsdBalance]);
 
   const handleCopyAddress = async () => {
     if (address) {
@@ -189,13 +212,27 @@ export default function Dashboard() {
                   Native Balance
                 </label>
                 <div className="flex items-center space-x-2">
-                  <span className="text-2xl font-bold text-gray-900">
-                    {isLoading ? (
-                      <div className="animate-pulse bg-gray-200 h-8 w-24 rounded"></div>
-                    ) : (
-                      `${balance || '0'} ${currentNetwork?.symbol || 'ETH'}`
+                  <div>
+                    <span className="text-2xl font-bold text-gray-900">
+                      {isLoading ? (
+                        <div className="animate-pulse bg-gray-200 h-8 w-24 rounded"></div>
+                      ) : (
+                        `${balance || '0'} ${currentNetwork?.symbol || 'ETH'}`
+                      )}
+                    </span>
+                    {balance && !isLoading && (
+                      <div className="text-sm text-gray-600">
+                        {isLoadingUsd ? (
+                          <span className="flex items-center space-x-1">
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                            <span>Loading USD...</span>
+                          </span>
+                        ) : (
+                          `$${usdBalance} USD`
+                        )}
+                      </div>
                     )}
-                  </span>
+                  </div>
                   {address && (
                     <button
                       onClick={handleRefreshBalance}

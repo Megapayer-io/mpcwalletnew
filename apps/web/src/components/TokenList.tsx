@@ -23,8 +23,11 @@ export function TokenList() {
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
   const [metadataFetched, setMetadataFetched] = useState(false);
+  const [tokenBalances, setTokenBalances] = useState<Record<string, string>>({});
+  const [tokenUsdValues, setTokenUsdValues] = useState<Record<string, string>>({});
+  const [isLoadingBalances, setIsLoadingBalances] = useState(false);
   
-  const { getTokenBalance, getTokenMetadata, address, currentNetwork } = useWalletStore();
+  const { getTokenBalance, getTokenMetadata, getUsdBalance, address, currentNetwork } = useWalletStore();
 
   // Load tokens from localStorage
   useEffect(() => {
@@ -43,6 +46,49 @@ export function TokenList() {
     localStorage.setItem('mpc-wallet-tokens', JSON.stringify(newTokens));
     setTokens(newTokens);
   };
+
+  // Load token balances and USD values
+  const loadTokenBalances = async () => {
+    if (!address || tokens.length === 0) return;
+
+    setIsLoadingBalances(true);
+    const newBalances: Record<string, string> = {};
+    const newUsdValues: Record<string, string> = {};
+
+    try {
+      await Promise.all(
+        tokens.map(async (token) => {
+          try {
+            const balance = await getTokenBalance({
+              tokenAddress: token.address,
+              decimals: token.decimals
+            });
+            newBalances[token.address] = balance;
+
+            // Get USD value
+            const usdValue = await getUsdBalance(balance, token.symbol);
+            newUsdValues[token.address] = usdValue;
+          } catch (error) {
+            console.error(`Failed to load balance for ${token.symbol}:`, error);
+            newBalances[token.address] = '0';
+            newUsdValues[token.address] = '0.00';
+          }
+        })
+      );
+
+      setTokenBalances(newBalances);
+      setTokenUsdValues(newUsdValues);
+    } catch (error) {
+      console.error('Failed to load token balances:', error);
+    } finally {
+      setIsLoadingBalances(false);
+    }
+  };
+
+  // Load balances when tokens or address changes
+  useEffect(() => {
+    loadTokenBalances();
+  }, [tokens, address]);
 
   // Auto-fetch token metadata when address is entered
   useEffect(() => {
@@ -273,33 +319,62 @@ export function TokenList() {
             No tokens added yet. Click "Add Token" to add custom tokens.
           </p>
         ) : (
-          tokens.map((token) => (
-            <div key={token.address} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-              <div className="flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium text-gray-900">{token.symbol}</span>
-                  <span className="text-xs text-gray-500 font-mono">
-                    {token.address.slice(0, 6)}...{token.address.slice(-4)}
-                  </span>
-                </div>
-                {token.name && (
-                  <div className="text-xs text-gray-500">
-                    {token.name}
+          tokens.map((token) => {
+            const balance = tokenBalances[token.address] || '0';
+            const usdValue = tokenUsdValues[token.address] || '0.00';
+            
+            return (
+              <div key={token.address} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium text-gray-900">{token.symbol}</span>
+                    <span className="text-xs text-gray-500 font-mono">
+                      {token.address.slice(0, 6)}...{token.address.slice(-4)}
+                    </span>
                   </div>
-                )}
-                <div className="text-sm text-gray-600">
-                  Balance: {formatBalance(token.balance)}
+                  {token.name && (
+                    <div className="text-xs text-gray-500">
+                      {token.name}
+                    </div>
+                  )}
+                  <div className="text-sm text-gray-600">
+                    Balance: {isLoadingBalances ? (
+                      <span className="flex items-center space-x-1">
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                        <span>Loading...</span>
+                      </span>
+                    ) : (
+                      <>
+                        {parseFloat(balance).toFixed(6)} {token.symbol}
+                        {parseFloat(balance) > 0 && (
+                          <span className="text-gray-500 ml-2">
+                            (${usdValue} USD)
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={loadTokenBalances}
+                    disabled={isLoadingBalances}
+                    className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                    title="Refresh balance"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoadingBalances ? 'animate-spin' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => handleRemoveToken(token.address)}
+                    className="p-1 text-gray-400 hover:text-red-600"
+                    title="Remove token"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={() => handleRemoveToken(token.address)}
-                className="p-1 text-gray-400 hover:text-red-600"
-                title="Remove token"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

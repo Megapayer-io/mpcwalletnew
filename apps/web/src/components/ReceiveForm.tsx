@@ -33,15 +33,19 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [currentBalance, setCurrentBalance] = useState<string>('0');
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [usdBalance, setUsdBalance] = useState<string>('0.00');
+  const [isLoadingUsd, setIsLoadingUsd] = useState(false);
   
-  const { address, currentNetwork, getBalance } = useWalletStore();
+  const { address, currentNetwork, getBalance, getUsdBalance, clearPriceCache } = useWalletStore();
   const qrRef = useRef<HTMLDivElement>(null);
 
   // Generate QR code data
   const generateQRData = () => {
     if (amount && parseFloat(amount) > 0) {
-      // Generate payment request with amount
-      return `ethereum:${address}?value=${parseFloat(amount) * Math.pow(10, 18)}&gas=21000`;
+      // Generate payment request with amount using the correct decimals for the selected token
+      const decimals = 18; // Most tokens use 18 decimals, but this could be made dynamic in the future
+      const valueInWei = parseFloat(amount) * Math.pow(10, decimals);
+      return `ethereum:${address}?value=${valueInWei}&gas=21000`;
     }
     return address || '';
   };
@@ -62,10 +66,54 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
     }
   };
 
-  // Load balance on component mount
+  // Load balance on component mount and when network changes
   useEffect(() => {
     loadCurrentBalance();
-  }, [address]);
+  }, [address, currentNetwork]);
+
+  // Update selected token when network changes
+  useEffect(() => {
+    if (currentNetwork?.symbol) {
+      setSelectedToken(currentNetwork.symbol);
+    }
+  }, [currentNetwork]);
+
+  // Load USD balance when balance changes
+  useEffect(() => {
+    const loadUsdBalance = async () => {
+      if (currentBalance && currentNetwork?.symbol) {
+        setIsLoadingUsd(true);
+        try {
+          const usd = await getUsdBalance(currentBalance, currentNetwork.symbol);
+          setUsdBalance(usd);
+        } catch (error) {
+          console.error('Failed to load USD balance:', error);
+          setUsdBalance('Price unavailable');
+        } finally {
+          setIsLoadingUsd(false);
+        }
+      }
+    };
+
+    loadUsdBalance();
+  }, [currentBalance, currentNetwork?.symbol, getUsdBalance]);
+
+  // Handle price cache refresh
+  const handleRefreshPrices = async () => {
+    clearPriceCache();
+    if (currentBalance && currentNetwork?.symbol) {
+      setIsLoadingUsd(true);
+      try {
+        const usd = await getUsdBalance(currentBalance, currentNetwork.symbol);
+        setUsdBalance(usd);
+      } catch (error) {
+        console.error('Failed to refresh USD balance:', error);
+        setUsdBalance('Price unavailable');
+      } finally {
+        setIsLoadingUsd(false);
+      }
+    }
+  };
 
   // Generate QR code
   useEffect(() => {
@@ -274,6 +322,30 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
                   `${parseFloat(currentBalance).toFixed(6)} ${currentNetwork?.symbol || 'ETH'}`
                 )}
               </p>
+               {currentBalance && !isLoadingBalance && (
+                 <div className="flex items-center space-x-2">
+                   <p className="text-sm text-gray-600">
+                     {isLoadingUsd ? (
+                       <span className="flex items-center space-x-1">
+                         <RefreshCw className="h-3 w-3 animate-spin" />
+                         <span>Loading USD...</span>
+                       </span>
+                     ) : usdBalance === 'Price unavailable' ? (
+                       <span className="text-red-500">Price unavailable</span>
+                     ) : (
+                       `$${usdBalance} USD`
+                     )}
+                   </p>
+                   <button
+                     onClick={handleRefreshPrices}
+                     disabled={isLoadingUsd}
+                     className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                     title="Refresh USD price"
+                   >
+                     <RefreshCw className={`h-3 w-3 ${isLoadingUsd ? 'animate-spin' : ''}`} />
+                   </button>
+                 </div>
+               )}
             </div>
             <button
               onClick={loadCurrentBalance}
@@ -285,6 +357,7 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
             </button>
           </div>
         </div>
+
 
         {/* Address Display */}
         <div className="mb-6">
@@ -329,7 +402,7 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
               onChange={(e) => setSelectedToken(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="ETH">{currentNetwork?.symbol || 'ETH'}</option>
+              <option value={currentNetwork?.symbol || 'ETH'}>{currentNetwork?.symbol || 'ETH'}</option>
             </select>
           </div>
           {amount && parseFloat(amount) > 0 && (

@@ -29,6 +29,7 @@ interface WalletStore {
   sendEth: (params: SendEthParams) => Promise<string>;
   sendErc20: (params: SendErc20Params) => Promise<string>;
   getTokenBalance: (params: TokenBalanceParams) => Promise<string>;
+  getTokenMetadata: (tokenAddress: string) => Promise<{ name: string; symbol: string; decimals: number }>;
   clearError: () => void;
   logout: () => void;
   
@@ -281,6 +282,25 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to get token balance',
+        isLoading: false 
+      });
+      throw error;
+    }
+  },
+
+  getTokenMetadata: async (tokenAddress: string) => {
+    const { wallet } = get();
+    if (!wallet) throw new Error('Wallet not initialized');
+
+    set({ isLoading: true, error: null });
+    
+    try {
+      const metadata = await wallet.getTokenMetadata(tokenAddress);
+      set({ isLoading: false });
+      return metadata;
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to get token metadata',
         isLoading: false 
       });
       throw error;

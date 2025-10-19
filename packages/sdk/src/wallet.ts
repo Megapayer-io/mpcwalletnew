@@ -554,6 +554,78 @@ export class EvmWallet {
   }
 
   /**
+   * Get ERC-20 token metadata (name, symbol, decimals)
+   */
+  async getTokenMetadata(tokenAddress: string): Promise<{ name: string; symbol: string; decimals: number }> {
+    if (!this.state.currentNetwork) {
+      throw new Error('No network selected');
+    }
+
+    const publicClient = createPublicClient({
+      chain: {
+        id: this.state.currentNetwork.chainId,
+        name: this.state.currentNetwork.name,
+        rpcUrls: {
+          default: { http: [this.state.currentNetwork.rpcUrl] }
+        },
+        nativeCurrency: {
+          name: this.state.currentNetwork.symbol,
+          symbol: this.state.currentNetwork.symbol,
+          decimals: 18
+        }
+      },
+      transport: http()
+    });
+
+    // ERC-20 metadata ABI
+    const erc20MetadataAbi = [
+      {
+        name: 'name',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [],
+        outputs: [{ name: '', type: 'string' }]
+      },
+      {
+        name: 'symbol',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [],
+        outputs: [{ name: '', type: 'string' }]
+      },
+      {
+        name: 'decimals',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [],
+        outputs: [{ name: '', type: 'uint8' }]
+      }
+    ] as const;
+
+    const contract = getContract({
+      address: tokenAddress as `0x${string}`,
+      abi: erc20MetadataAbi,
+      client: { public: publicClient }
+    });
+
+    try {
+      const [name, symbol, decimals] = await Promise.all([
+        contract.read.name(),
+        contract.read.symbol(),
+        contract.read.decimals()
+      ]);
+
+      return {
+        name: name as string,
+        symbol: symbol as string,
+        decimals: Number(decimals)
+      };
+    } catch (error) {
+      throw new Error('Invalid token contract or failed to fetch metadata');
+    }
+  }
+
+  /**
    * Get ERC-20 token balance
    */
   async getTokenBalance(params: TokenBalanceParams): Promise<string> {

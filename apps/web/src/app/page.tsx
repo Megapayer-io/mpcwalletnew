@@ -7,7 +7,8 @@ import { Header } from '@/components/Header';
 import { UnlockModal } from '@/components/UnlockModal';
 import { TokenList } from '@/components/TokenList';
 import { AccountManager } from '@/components/AccountManager';
-import { Wallet, Copy, RefreshCw, ExternalLink } from 'lucide-react';
+import { Wallet, Copy, RefreshCw, ExternalLink, Send, QrCode } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -108,6 +109,35 @@ export default function Dashboard() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
           <p className="text-gray-600">Manage your wallet and view your balances</p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Link
+            href="/send"
+            className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+          >
+            <div className="p-2 bg-blue-600 text-white rounded-lg">
+              <Send className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Send Funds</h3>
+              <p className="text-sm text-gray-600">Send tokens to any address</p>
+            </div>
+          </Link>
+          
+          <Link
+            href="/receive"
+            className="flex items-center space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
+          >
+            <div className="p-2 bg-green-600 text-white rounded-lg">
+              <QrCode className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Receive Funds</h3>
+              <p className="text-sm text-gray-600">Share your address or QR code</p>
+            </div>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

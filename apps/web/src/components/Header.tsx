@@ -55,16 +55,22 @@ export function Header() {
               Dashboard
             </Link>
             <Link
-              href="/networks"
+              href="/receive"
               className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >
-              Networks
+              Receive
             </Link>
             <Link
               href="/send"
               className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >
               Send
+            </Link>
+            <Link
+              href="/networks"
+              className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Networks
             </Link>
           </nav>
 

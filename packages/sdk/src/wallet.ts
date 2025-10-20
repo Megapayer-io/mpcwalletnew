@@ -4,7 +4,7 @@ import { generateMnemonic, validateMnemonic, mnemonicToSeedSync } from 'bip39';
 import { HDKey } from '@scure/bip32';
 import { encrypt, decrypt } from './crypto.js';
 import { Keystore } from './types.js';
-import { Network, WalletState, SendEthParams, SendErc20Params, TokenBalanceParams, AddNetworkParams, Account, ImportAccountParams, CreateAccountParams } from './types.js';
+import { Network, WalletState, SendEthParams, SendErc20Params, TokenBalanceParams, AddNetworkParams, Account, ImportAccountParams, CreateAccountParams, TransferNftParams } from './types.js';
 import { loadNetworks, saveNetworks, addNetwork as addNetworkUtil, findNetwork } from './networks.js';
 
 /**
@@ -818,5 +818,160 @@ export class EvmWallet {
     this.saveState();
     
     console.log('Corrupted account data cleared');
+  }
+
+  /**
+   * Transfer NFT (ERC721 or ERC1155)
+   */
+  async transferNft(params: TransferNftParams): Promise<string> {
+    if (!this.state.currentAccount || !this.state.currentNetwork) {
+      throw new Error('No account or network selected');
+    }
+
+    const { contractAddress, tokenId, to, amount = '1' } = params;
+    
+    // Get the private key for the current account
+    const accountData = this.accounts.get(this.state.currentAccount.address);
+    if (!accountData) {
+      throw new Error('Private key not found for current account');
+    }
+
+    const account = privateKeyToAccount(accountData.privateKey as `0x${string}`);
+    
+    const publicClient = createPublicClient({
+      chain: {
+        id: this.state.currentNetwork.chainId,
+        name: this.state.currentNetwork.name,
+        rpcUrls: {
+          default: { http: [this.state.currentNetwork.rpcUrl] }
+        },
+        nativeCurrency: {
+          name: this.state.currentNetwork.symbol,
+          symbol: this.state.currentNetwork.symbol,
+          decimals: 18
+        }
+      },
+      transport: http()
+    });
+
+    const walletClient = createWalletClient({
+      account,
+      chain: {
+        id: this.state.currentNetwork.chainId,
+        name: this.state.currentNetwork.name,
+        rpcUrls: {
+          default: { http: [this.state.currentNetwork.rpcUrl] }
+        },
+        nativeCurrency: {
+          name: this.state.currentNetwork.symbol,
+          symbol: this.state.currentNetwork.symbol,
+          decimals: 18
+        }
+      },
+      transport: http()
+    });
+
+    try {
+      // First, determine if it's ERC721 or ERC1155 by checking the contract
+      const erc721Abi = [
+        {
+          name: 'supportsInterface',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'interfaceId', type: 'bytes4' }],
+          outputs: [{ name: '', type: 'bool' }]
+        },
+        {
+          name: 'safeTransferFrom',
+          type: 'function',
+          stateMutability: 'nonpayable',
+          inputs: [
+            { name: 'from', type: 'address' },
+            { name: 'to', type: 'address' },
+            { name: 'tokenId', type: 'uint256' }
+          ],
+          outputs: []
+        }
+      ] as const;
+
+      const erc1155Abi = [
+        {
+          name: 'supportsInterface',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'interfaceId', type: 'bytes4' }],
+          outputs: [{ name: '', type: 'bool' }]
+        },
+        {
+          name: 'safeTransferFrom',
+          type: 'function',
+          stateMutability: 'nonpayable',
+          inputs: [
+            { name: 'from', type: 'address' },
+            { name: 'to', type: 'address' },
+            { name: 'id', type: 'uint256' },
+            { name: 'amount', type: 'uint256' },
+            { name: 'data', type: 'bytes' }
+          ],
+          outputs: []
+        }
+      ] as const;
+
+      const contract = getContract({
+        address: contractAddress as `0x${string}`,
+        abi: erc721Abi,
+        client: { public: publicClient }
+      });
+
+      // Check if it supports ERC721 interface (0x80ac58cd)
+      const isERC721 = await contract.read.supportsInterface(['0x80ac58cd']);
+      
+      if (isERC721) {
+        // ERC721 transfer
+        const hash = await walletClient.writeContract({
+          address: contractAddress as `0x${string}`,
+          abi: erc721Abi,
+          functionName: 'safeTransferFrom',
+          args: [
+            this.state.currentAccount.address as `0x${string}`,
+            to as `0x${string}`,
+            BigInt(tokenId)
+          ]
+        });
+        
+        return hash;
+      } else {
+        // Check if it supports ERC1155 interface (0xd9b67a26)
+        const erc1155Contract = getContract({
+          address: contractAddress as `0x${string}`,
+          abi: erc1155Abi,
+          client: { public: publicClient }
+        });
+        
+        const isERC1155 = await erc1155Contract.read.supportsInterface(['0xd9b67a26']);
+        
+        if (isERC1155) {
+          // ERC1155 transfer
+          const hash = await walletClient.writeContract({
+            address: contractAddress as `0x${string}`,
+            abi: erc1155Abi,
+            functionName: 'safeTransferFrom',
+            args: [
+              this.state.currentAccount.address as `0x${string}`,
+              to as `0x${string}`,
+              BigInt(tokenId),
+              BigInt(amount),
+              '0x' // Empty data
+            ]
+          });
+          
+          return hash;
+        } else {
+          throw new Error('Contract does not support ERC721 or ERC1155 standards');
+        }
+      }
+    } catch (error) {
+      throw new Error(`Failed to transfer NFT: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }

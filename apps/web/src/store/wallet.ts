@@ -1,11 +1,38 @@
 import { create } from 'zustand';
-import { EvmWallet, Network, SendEthParams, SendErc20Params, TokenBalanceParams, Account, ImportAccountParams, CreateAccountParams } from '@evm-wallet/sdk';
+import { EvmWallet, Network, SendEthParams, SendErc20Params, TokenBalanceParams, Account, ImportAccountParams, CreateAccountParams, TransferNftParams } from '@evm-wallet/sdk';
 
 interface TokenPrice {
   symbol: string;
   price: number;
   lastUpdated: number;
 }
+
+interface NftMetadata {
+  name: string;
+  description: string;
+  image: string;
+  external_url?: string;
+  attributes?: Array<{
+    trait_type: string;
+    value: string | number;
+  }>;
+  animation_url?: string;
+  background_color?: string;
+}
+
+interface Nft {
+  contractAddress: string;
+  tokenId: string;
+  name: string;
+  description: string;
+  image: string;
+  metadata: NftMetadata;
+  collectionName?: string;
+  collectionSymbol?: string;
+  tokenType: 'ERC721' | 'ERC1155';
+  balance?: string;
+}
+
 
 interface WalletStore {
   // State
@@ -22,6 +49,8 @@ interface WalletStore {
   isLoading: boolean;
   error: string | null;
   tokenPrices: Record<string, TokenPrice>;
+  nfts: Nft[];
+  isLoadingNfts: boolean;
 
   // Actions
   initialize: () => void;
@@ -40,6 +69,8 @@ interface WalletStore {
   getTokenPrice: (symbol: string) => Promise<number>;
   getUsdBalance: (balance: string, symbol: string) => Promise<string>;
   clearPriceCache: () => void;
+  fetchNfts: (address?: string) => Promise<void>;
+  transferNft: (params: TransferNftParams) => Promise<string>;
   clearError: () => void;
   logout: () => void;
   
@@ -67,6 +98,8 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   isLoading: false,
   error: null,
   tokenPrices: {},
+  nfts: [],
+  isLoadingNfts: false,
 
   // Actions
   initialize: () => {
@@ -514,6 +547,53 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   clearPriceCache: () => {
     set({ tokenPrices: {} });
   },
+
+  // NFT methods
+  fetchNfts: async (address?: string) => {
+    const { wallet, currentNetwork } = get();
+    if (!wallet || !currentNetwork) {
+      throw new Error('Wallet or network not initialized');
+    }
+
+    const targetAddress = address || wallet.getAddress();
+    if (!targetAddress) {
+      throw new Error('No address available');
+    }
+
+    set({ isLoadingNfts: true, error: null });
+
+    try {
+      // Use multiple free APIs to fetch NFTs
+      const nfts = await fetchNftsFromApis(targetAddress, currentNetwork.chainId);
+      set({ nfts, isLoadingNfts: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to fetch NFTs',
+        isLoadingNfts: false 
+      });
+      throw error;
+    }
+  },
+
+  transferNft: async (params: TransferNftParams) => {
+    const { wallet } = get();
+    if (!wallet) throw new Error('Wallet not initialized');
+
+    set({ isLoading: true, error: null });
+    
+    try {
+      // This will be implemented in the SDK
+      const hash = await wallet.transferNft(params);
+      set({ isLoading: false });
+      return hash;
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to transfer NFT',
+        isLoading: false 
+      });
+      throw error;
+    }
+  },
 }));
 
 // Helper function to map token symbols to CoinGecko IDs
@@ -602,4 +682,146 @@ function getCoinPaprikaId(symbol: string): string {
   };
   
   return symbolMap[symbol.toUpperCase()] || symbol.toLowerCase();
+}
+
+// Helper function to fetch NFTs from multiple free APIs
+async function fetchNftsFromApis(address: string, chainId: number): Promise<Nft[]> {
+  const nfts: Nft[] = [];
+  
+  // Map chain IDs to their names for API calls
+  const chainMap: Record<number, string> = {
+    1: 'eth', // Ethereum
+    137: 'polygon', // Polygon
+    56: 'bsc', // BSC
+    43114: 'avalanche', // Avalanche
+    250: 'fantom', // Fantom
+    10: 'optimism', // Optimism
+    42161: 'arbitrum', // Arbitrum
+  };
+
+  const chainName = chainMap[chainId];
+  if (!chainName) {
+    throw new Error(`Unsupported chain ID: ${chainId}`);
+  }
+
+  // Try multiple free APIs
+  const apis = [
+    // Alchemy API (free tier)
+    {
+      name: 'Alchemy',
+      url: `https://${chainName}-mainnet.g.alchemy.com/nft/v3/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || 'demo'}/getNFTsForOwner?owner=${address}&withMetadata=true&pageSize=100`,
+      parser: (data: any) => data.ownedNfts?.map((nft: any) => ({
+        contractAddress: nft.contract.address,
+        tokenId: nft.tokenId,
+        name: nft.name || `#${nft.tokenId}`,
+        description: nft.description || '',
+        image: nft.image?.originalUrl || nft.image?.pngUrl || nft.image?.cachedUrl || '',
+        metadata: {
+          name: nft.name || `#${nft.tokenId}`,
+          description: nft.description || '',
+          image: nft.image?.originalUrl || nft.image?.pngUrl || nft.image?.cachedUrl || '',
+          attributes: nft.raw?.metadata?.attributes || [],
+        },
+        collectionName: nft.contract.name,
+        collectionSymbol: nft.contract.symbol,
+        tokenType: nft.contract.tokenType as 'ERC721' | 'ERC1155',
+        balance: nft.balance,
+      })) || []
+    },
+    // Moralis API (free tier)
+    {
+      name: 'Moralis',
+      url: `https://deep-index.moralis.io/api/v2.2/${address}/nft?chain=${chainName}&format=decimal&media_items=false&normalize_metadata=true`,
+      headers: process.env.NEXT_PUBLIC_MORALIS_API_KEY ? {
+        'X-API-Key': process.env.NEXT_PUBLIC_MORALIS_API_KEY,
+      } : undefined,
+      parser: (data: any) => data.result?.map((nft: any) => ({
+        contractAddress: nft.token_address,
+        tokenId: nft.token_id,
+        name: nft.name || `#${nft.token_id}`,
+        description: nft.metadata?.description || '',
+        image: nft.metadata?.image || '',
+        metadata: {
+          name: nft.name || `#${nft.token_id}`,
+          description: nft.metadata?.description || '',
+          image: nft.metadata?.image || '',
+          attributes: nft.metadata?.attributes || [],
+        },
+        collectionName: nft.metadata?.name,
+        collectionSymbol: nft.symbol,
+        tokenType: nft.contract_type as 'ERC721' | 'ERC1155',
+        balance: nft.amount,
+      })) || []
+    },
+    // OpenSea API (free tier)
+    {
+      name: 'OpenSea',
+      url: `https://api.opensea.io/api/v2/chain/${chainName}/account/${address}/nfts?limit=200`,
+      headers: process.env.NEXT_PUBLIC_OPENSEA_API_KEY ? {
+        'X-API-KEY': process.env.NEXT_PUBLIC_OPENSEA_API_KEY,
+      } : undefined,
+      parser: (data: any) => data.nfts?.map((nft: any) => ({
+        contractAddress: nft.contract,
+        tokenId: nft.identifier,
+        name: nft.name || `#${nft.identifier}`,
+        description: nft.description || '',
+        image: nft.image_url || '',
+        metadata: {
+          name: nft.name || `#${nft.identifier}`,
+          description: nft.description || '',
+          image: nft.image_url || '',
+          attributes: nft.traits || [],
+        },
+        collectionName: nft.collection,
+        collectionSymbol: nft.collection,
+        tokenType: 'ERC721' as const,
+        balance: '1',
+      })) || []
+    }
+  ];
+
+  for (const api of apis) {
+    try {
+      console.log(`Fetching NFTs from ${api.name} for ${address} on ${chainName}`);
+      
+      const headers: Record<string, string> = {};
+      if (api.headers) {
+        Object.entries(api.headers).forEach(([key, value]) => {
+          if (value) {
+            headers[key] = value;
+          }
+        });
+      }
+      
+      const response = await fetch(api.url, {
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(`${api.name} API response:`, data);
+      
+      const apiNfts = api.parser(data);
+      
+      if (apiNfts && apiNfts.length > 0) {
+        console.log(`Found ${apiNfts.length} NFTs from ${api.name}`);
+        nfts.push(...apiNfts);
+        break; // Use first successful API
+      }
+    } catch (error) {
+      console.error(`Failed to fetch NFTs from ${api.name}:`, error);
+      continue; // Try next API
+    }
+  }
+
+  // Remove duplicates based on contract address and token ID
+  const uniqueNfts = nfts.filter((nft, index, self) => 
+    index === self.findIndex(n => n.contractAddress === nft.contractAddress && n.tokenId === nft.tokenId)
+  );
+
+  console.log(`Total unique NFTs found: ${uniqueNfts.length}`);
+  return uniqueNfts;
 }

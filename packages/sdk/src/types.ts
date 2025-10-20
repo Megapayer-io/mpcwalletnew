@@ -63,3 +63,10 @@ export interface ImportAccountParams {
 export interface CreateAccountParams {
   name: string;
 }
+
+export interface TransferNftParams {
+  contractAddress: string;
+  tokenId: string;
+  to: string;
+  amount?: string; // For ERC1155
+}

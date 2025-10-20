@@ -9,7 +9,8 @@ export type {
   TokenBalanceParams,
   AddNetworkParams,
   ImportAccountParams,
-  CreateAccountParams
+  CreateAccountParams,
+  TransferNftParams
 } from './types.js';
 export { DEFAULT_NETWORKS } from './networks.js';
 export { encrypt, decrypt } from './crypto.js';

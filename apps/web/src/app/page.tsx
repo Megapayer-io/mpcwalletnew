@@ -135,7 +135,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link
             href="/send"
             className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
@@ -159,6 +159,19 @@ export default function Dashboard() {
             <div>
               <h3 className="font-semibold text-gray-900">Receive Funds</h3>
               <p className="text-sm text-gray-600">Share your address or QR code</p>
+            </div>
+          </Link>
+          
+          <Link
+            href="/browser"
+            className="flex items-center space-x-3 p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
+          >
+            <div className="p-2 bg-purple-600 text-white rounded-lg">
+              <ExternalLink className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">DApp Browser</h3>
+              <p className="text-sm text-gray-600">Browse DeFi protocols</p>
             </div>
           </Link>
         </div>

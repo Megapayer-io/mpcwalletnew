@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useWalletStore } from '@/store/wallet';
-import { Wallet, Lock, Unlock, Shield } from 'lucide-react';
+import { Wallet, Lock, Unlock, Shield, Globe } from 'lucide-react';
 import SecuritySettings from './SecuritySettings';
 import HardwareWalletManager from './HardwareWalletManager';
 
@@ -82,6 +82,12 @@ export function Header() {
               className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >
               History
+            </Link>
+            <Link
+              href="/browser"
+              className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Browser
             </Link>
             <Link
               href="/networks"

@@ -41,6 +41,7 @@ export default function BrowserPage() {
   const [showPopular, setShowPopular] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [securityWarning, setSecurityWarning] = useState<string | null>(null);
+  const [iframeError, setIframeError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -110,6 +111,15 @@ export default function BrowserPage() {
     setIsLoading(true);
     setShowPopular(false);
     setShowBookmarks(false);
+    setIframeError(false);
+    setSecurityWarning(null);
+    
+    // Set a timeout to detect if iframe fails to load
+    setTimeout(() => {
+      if (isLoading) {
+        handleIframeError();
+      }
+    }, 10000); // 10 second timeout
   };
 
   const handleUrlSubmit = (e: React.FormEvent) => {
@@ -147,6 +157,18 @@ export default function BrowserPage() {
     setIsLoading(false);
     setCanGoBack(true);
     setCanGoForward(false);
+    setIframeError(false);
+  };
+
+  const handleIframeError = () => {
+    setIsLoading(false);
+    setIframeError(true);
+  };
+
+  const openInNewTab = () => {
+    if (currentUrl) {
+      window.open(currentUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   // No fake data filtering - only real bookmarks
@@ -360,6 +382,44 @@ export default function BrowserPage() {
               </div>
             </div>
           </div>
+        ) : iframeError ? (
+          <div className="flex items-center justify-center h-screen bg-gray-50">
+            <div className="text-center max-w-md mx-auto px-4">
+              <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-6" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Cannot Load Website</h2>
+              <p className="text-gray-600 mb-6">
+                This website cannot be displayed in the browser due to security restrictions. 
+                Many websites block iframe embedding for security reasons.
+              </p>
+              <div className="space-y-4">
+                <button
+                  onClick={openInNewTab}
+                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Open in New Tab
+                </button>
+                <button
+                  onClick={() => {
+                    setIframeError(false);
+                    setCurrentUrl('');
+                    setUrlInput('');
+                  }}
+                  className="w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Go Back
+                </button>
+              </div>
+              <div className="mt-6 text-sm text-gray-500">
+                <p>Common websites that don't allow iframe embedding:</p>
+                <ul className="mt-2 space-y-1">
+                  <li>• Block explorers (Polygonscan, Etherscan)</li>
+                  <li>• Social media platforms</li>
+                  <li>• Banking websites</li>
+                  <li>• Many security-focused sites</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         ) : (
           <>
             {isLoading && (
@@ -376,8 +436,9 @@ export default function BrowserPage() {
               src={currentUrl}
               className="w-full h-screen"
               onLoad={handleIframeLoad}
+              onError={handleIframeError}
               title="DApp Browser"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation"
             />
           </>
         )}

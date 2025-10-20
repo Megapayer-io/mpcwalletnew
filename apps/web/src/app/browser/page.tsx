@@ -27,61 +27,18 @@ interface DApp {
   isBookmarked?: boolean;
 }
 
-const popularDApps: DApp[] = [
-  {
-    name: 'Uniswap',
-    url: 'https://app.uniswap.org',
-    description: 'Decentralized exchange for trading tokens',
-    category: 'DeFi',
-    icon: '🦄'
-  },
-  {
-    name: 'OpenSea',
-    url: 'https://opensea.io',
-    description: 'NFT marketplace',
-    category: 'NFT',
-    icon: '🌊'
-  },
-  {
-    name: 'Aave',
-    url: 'https://app.aave.com',
-    description: 'Lending and borrowing protocol',
-    category: 'DeFi',
-    icon: '👻'
-  },
-  {
-    name: 'Compound',
-    url: 'https://app.compound.finance',
-    description: 'Money markets protocol',
-    category: 'DeFi',
-    icon: '🔷'
-  },
-  {
-    name: '1inch',
-    url: 'https://app.1inch.io',
-    description: 'DEX aggregator',
-    category: 'DeFi',
-    icon: '1️⃣'
-  },
-  {
-    name: 'PancakeSwap',
-    url: 'https://pancakeswap.finance',
-    description: 'BSC DEX and yield farming',
-    category: 'DeFi',
-    icon: '🥞'
-  }
-];
+// No fake data - users will add their own DApps via bookmarks
 
 export default function BrowserPage() {
   const { address, currentNetwork, isUnlocked } = useWalletStore();
-  const [currentUrl, setCurrentUrl] = useState('https://app.uniswap.org');
-  const [urlInput, setUrlInput] = useState(currentUrl);
+  const [currentUrl, setCurrentUrl] = useState('');
+  const [urlInput, setUrlInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
   const [bookmarks, setBookmarks] = useState<DApp[]>([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
-  const [showPopular, setShowPopular] = useState(true);
+  const [showPopular, setShowPopular] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [securityWarning, setSecurityWarning] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -122,6 +79,21 @@ export default function BrowserPage() {
     const newBookmark = { ...dapp, isBookmarked: true };
     const updatedBookmarks = [...bookmarks, newBookmark];
     saveBookmarks(updatedBookmarks);
+  };
+
+  const addCurrentPageBookmark = () => {
+    if (currentUrl) {
+      const domain = getDomainFromUrl(currentUrl);
+      const newBookmark: DApp = {
+        name: domain,
+        url: currentUrl,
+        description: `Bookmarked DApp from ${domain}`,
+        category: 'DApp',
+        icon: '🌐',
+        isBookmarked: true
+      };
+      addBookmark(newBookmark);
+    }
   };
 
   const removeBookmark = (url: string) => {
@@ -165,7 +137,10 @@ export default function BrowserPage() {
   };
 
   const goHome = () => {
-    navigateToUrl('https://app.uniswap.org');
+    setCurrentUrl('');
+    setUrlInput('');
+    setShowPopular(false);
+    setShowBookmarks(false);
   };
 
   const handleIframeLoad = () => {
@@ -174,11 +149,7 @@ export default function BrowserPage() {
     setCanGoForward(false);
   };
 
-  const filteredDApps = popularDApps.filter(dapp =>
-    dapp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    dapp.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    dapp.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // No fake data filtering - only real bookmarks
 
   const isBookmarked = (url: string) => {
     return bookmarks.some(bookmark => bookmark.url === url);
@@ -282,6 +253,17 @@ export default function BrowserPage() {
           >
             <Bookmark className="w-4 h-4" />
           </button>
+          
+          {/* Add Current Page to Bookmarks */}
+          {currentUrl && !isBookmarked(currentUrl) && (
+            <button
+              onClick={addCurrentPageBookmark}
+              className="p-2 rounded-lg hover:bg-gray-100"
+              title="Bookmark this page"
+            >
+              <Star className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -310,70 +292,52 @@ export default function BrowserPage() {
         </div>
       </div>
 
-      {/* Popular DApps / Bookmarks */}
-      {(showPopular || showBookmarks) && (
+      {/* Bookmarks Only - No Fake Data */}
+      {showBookmarks && (
         <div className="bg-white border-b border-gray-200 p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {showBookmarks ? 'Bookmarks' : 'Popular DApps'}
-            </h2>
-            {!showBookmarks && (
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search DApps..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            )}
+            <h2 className="text-lg font-semibold text-gray-900">Bookmarks</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(showBookmarks ? bookmarks : filteredDApps).map((dapp) => (
-              <div
-                key={dapp.url}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => navigateToUrl(dapp.url)}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="text-2xl">{dapp.icon}</div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{dapp.name}</h3>
-                      <p className="text-sm text-gray-600">{dapp.category}</p>
+          {bookmarks.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {bookmarks.map((dapp) => (
+                <div
+                  key={dapp.url}
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => navigateToUrl(dapp.url)}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl">{dapp.icon || '🌐'}</div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{dapp.name}</h3>
+                        <p className="text-sm text-gray-600">{dapp.category}</p>
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isBookmarked(dapp.url)) {
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
                         removeBookmark(dapp.url);
-                      } else {
-                        addBookmark(dapp);
-                      }
-                    }}
-                    className="text-gray-400 hover:text-yellow-500"
-                  >
-                    <Star className={`w-4 h-4 ${isBookmarked(dapp.url) ? 'fill-current text-yellow-500' : ''}`} />
-                  </button>
+                      }}
+                      className="text-gray-400 hover:text-red-500"
+                    >
+                      <Star className="w-4 h-4 fill-current text-yellow-500" />
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">{dapp.description}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">{getDomainFromUrl(dapp.url)}</span>
+                    <ExternalLink className="w-3 h-3 text-gray-400" />
+                  </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">{dapp.description}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">{getDomainFromUrl(dapp.url)}</span>
-                  <ExternalLink className="w-3 h-3 text-gray-400" />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {showBookmarks && bookmarks.length === 0 && (
+              ))}
+            </div>
+          ) : (
             <div className="text-center py-8 text-gray-500">
               <Bookmark className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p>No bookmarks yet</p>
-              <p className="text-sm">Star DApps to add them to your bookmarks</p>
+              <p className="text-sm">Visit DApps and bookmark them for quick access</p>
             </div>
           )}
         </div>
@@ -381,23 +345,42 @@ export default function BrowserPage() {
 
       {/* Browser Content */}
       <div className="flex-1">
-        {isLoading && (
-          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
-            <div className="text-center">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-              <p className="text-gray-600">Loading DApp...</p>
+        {!currentUrl ? (
+          <div className="flex items-center justify-center h-screen bg-gray-50">
+            <div className="text-center max-w-md mx-auto px-4">
+              <Globe className="w-16 h-16 text-gray-400 mx-auto mb-6" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">DApp Browser</h2>
+              <p className="text-gray-600 mb-6">
+                Enter a DApp URL above to start browsing, or use the bookmark button to save your favorite DApps.
+              </p>
+              <div className="space-y-2 text-sm text-gray-500">
+                <p>• Enter any DApp URL in the address bar</p>
+                <p>• Bookmark DApps for quick access</p>
+                <p>• Connect your wallet to interact with DApps</p>
+              </div>
             </div>
           </div>
+        ) : (
+          <>
+            {isLoading && (
+              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                <div className="text-center">
+                  <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+                  <p className="text-gray-600">Loading DApp...</p>
+                </div>
+              </div>
+            )}
+            
+            <iframe
+              ref={iframeRef}
+              src={currentUrl}
+              className="w-full h-screen"
+              onLoad={handleIframeLoad}
+              title="DApp Browser"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+            />
+          </>
         )}
-        
-        <iframe
-          ref={iframeRef}
-          src={currentUrl}
-          className="w-full h-screen"
-          onLoad={handleIframeLoad}
-          title="DApp Browser"
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-        />
       </div>
     </div>
   );

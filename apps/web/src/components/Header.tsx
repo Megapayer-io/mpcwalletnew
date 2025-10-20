@@ -5,10 +5,12 @@ import { useState } from 'react';
 import { useWalletStore } from '@/store/wallet';
 import { Wallet, Lock, Unlock, Shield } from 'lucide-react';
 import SecuritySettings from './SecuritySettings';
+import HardwareWalletManager from './HardwareWalletManager';
 
 export function Header() {
   const { isUnlocked, address, currentNetwork, lock, logout } = useWalletStore();
   const [showSecuritySettings, setShowSecuritySettings] = useState(false);
+  const [showHardwareWallet, setShowHardwareWallet] = useState(false);
 
   const clearAllData = () => {
     if (confirm('Are you sure you want to clear all wallet data? This will remove all accounts and networks.')) {
@@ -81,6 +83,12 @@ export function Header() {
             >
               Networks
             </Link>
+            <button
+              onClick={() => setShowHardwareWallet(true)}
+              className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Hardware Wallet
+            </button>
           </nav>
 
           <div className="flex items-center space-x-4">
@@ -132,6 +140,13 @@ export function Header() {
           isOpen={showSecuritySettings} 
           onClose={() => setShowSecuritySettings(false)} 
         />
+
+      {/* Hardware Wallet Modal */}
+        <HardwareWalletManager 
+          isOpen={showHardwareWallet} 
+          onClose={() => setShowHardwareWallet(false)} 
+        />
+
     </header>
   );
 }

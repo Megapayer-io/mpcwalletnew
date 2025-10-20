@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWalletStore } from '@/store/wallet';
 import { WalletProvider } from '@/components/WalletProvider';
+import { AdvancedBrowser } from '@/components/AdvancedBrowser';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -34,15 +35,10 @@ export default function BrowserPage() {
   const [currentUrl, setCurrentUrl] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [canGoForward, setCanGoForward] = useState(false);
   const [bookmarks, setBookmarks] = useState<DApp[]>([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
-  const [showPopular, setShowPopular] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [securityWarning, setSecurityWarning] = useState<string | null>(null);
-  const [iframeError, setIframeError] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [browserError, setBrowserError] = useState<string | null>(null);
 
   useEffect(() => {
     loadBookmarks();
@@ -106,20 +102,12 @@ export default function BrowserPage() {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://' + url;
     }
+    
     setCurrentUrl(url);
     setUrlInput(url);
-    setIsLoading(true);
-    setShowPopular(false);
     setShowBookmarks(false);
-    setIframeError(false);
+    setBrowserError(null);
     setSecurityWarning(null);
-    
-    // Set a timeout to detect if iframe fails to load
-    setTimeout(() => {
-      if (isLoading) {
-        handleIframeError();
-      }
-    }, 10000); // 10 second timeout
   };
 
   const handleUrlSubmit = (e: React.FormEvent) => {
@@ -127,42 +115,23 @@ export default function BrowserPage() {
     navigateToUrl(urlInput);
   };
 
-  const goBack = () => {
-    if (canGoBack && iframeRef.current) {
-      iframeRef.current.contentWindow?.history.back();
-    }
-  };
-
-  const goForward = () => {
-    if (canGoForward && iframeRef.current) {
-      iframeRef.current.contentWindow?.history.forward();
-    }
-  };
-
-  const refresh = () => {
-    if (iframeRef.current) {
-      iframeRef.current.src = iframeRef.current.src;
-      setIsLoading(true);
-    }
-  };
-
   const goHome = () => {
     setCurrentUrl('');
     setUrlInput('');
-    setShowPopular(false);
     setShowBookmarks(false);
   };
 
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-    setCanGoBack(true);
-    setCanGoForward(false);
-    setIframeError(false);
+  const handleBrowserLoadStart = () => {
+    setIsLoading(true);
   };
 
-  const handleIframeError = () => {
+  const handleBrowserLoadEnd = () => {
     setIsLoading(false);
-    setIframeError(true);
+  };
+
+  const handleBrowserError = (error: string) => {
+    setBrowserError(error);
+    setIsLoading(false);
   };
 
   const openInNewTab = () => {
@@ -207,87 +176,67 @@ export default function BrowserPage() {
         </div>
       </div>
 
-      {/* Navigation Bar */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center gap-2">
-          {/* Navigation Buttons */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={goBack}
-              disabled={!canGoBack}
-              className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={goForward}
-              disabled={!canGoForward}
-              className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={refresh}
-              className="p-2 rounded-lg hover:bg-gray-100"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
-            <button
-              onClick={goHome}
-              className="p-2 rounded-lg hover:bg-gray-100"
-            >
-              <Home className="w-4 h-4" />
-            </button>
-          </div>
+       {/* Navigation Bar */}
+       <div className="bg-white border-b border-gray-200 px-4 py-3">
+         <div className="flex items-center gap-2">
+           {/* Home Button */}
+           <button
+             onClick={goHome}
+             className="p-2 rounded-lg hover:bg-gray-100"
+             title="Home"
+           >
+             <Home className="w-4 h-4" />
+           </button>
 
-          {/* URL Bar */}
-          <form onSubmit={handleUrlSubmit} className="flex-1 flex items-center gap-2">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="Enter DApp URL or search..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              {urlInput && (
-                <button
-                  type="button"
-                  onClick={() => setUrlInput('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Go
-            </button>
-          </form>
+           {/* URL Bar */}
+           <form onSubmit={handleUrlSubmit} className="flex-1 flex items-center gap-2">
+             <div className="flex-1 relative">
+               <input
+                 type="text"
+                 value={urlInput}
+                 onChange={(e) => setUrlInput(e.target.value)}
+                 placeholder="Enter DApp URL or search..."
+                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+               />
+               {urlInput && (
+                 <button
+                   type="button"
+                   onClick={() => setUrlInput('')}
+                   className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                 >
+                   <X className="w-4 h-4" />
+                 </button>
+               )}
+             </div>
+             <button
+               type="submit"
+               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+             >
+               Go
+             </button>
+           </form>
 
-          {/* Bookmarks Button */}
-          <button
-            onClick={() => setShowBookmarks(!showBookmarks)}
-            className="p-2 rounded-lg hover:bg-gray-100"
-          >
-            <Bookmark className="w-4 h-4" />
-          </button>
-          
-          {/* Add Current Page to Bookmarks */}
-          {currentUrl && !isBookmarked(currentUrl) && (
-            <button
-              onClick={addCurrentPageBookmark}
-              className="p-2 rounded-lg hover:bg-gray-100"
-              title="Bookmark this page"
-            >
-              <Star className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
+           {/* Bookmarks Button */}
+           <button
+             onClick={() => setShowBookmarks(!showBookmarks)}
+             className="p-2 rounded-lg hover:bg-gray-100"
+             title="Bookmarks"
+           >
+             <Bookmark className="w-4 h-4" />
+           </button>
+           
+           {/* Add Current Page to Bookmarks */}
+           {currentUrl && !isBookmarked(currentUrl) && (
+             <button
+               onClick={addCurrentPageBookmark}
+               className="p-2 rounded-lg hover:bg-gray-100"
+               title="Bookmark this page"
+             >
+               <Star className="w-4 h-4" />
+             </button>
+           )}
+         </div>
+       </div>
 
       {/* Connection Status */}
       <div className={`border-l-4 p-4 ${isUnlocked ? 'bg-green-50 border-green-400' : 'bg-yellow-50 border-yellow-400'}`}>
@@ -365,84 +314,35 @@ export default function BrowserPage() {
         </div>
       )}
 
-      {/* Browser Content */}
-      <div className="flex-1">
-        {!currentUrl ? (
-          <div className="flex items-center justify-center h-screen bg-gray-50">
-            <div className="text-center max-w-md mx-auto px-4">
-              <Globe className="w-16 h-16 text-gray-400 mx-auto mb-6" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">DApp Browser</h2>
-              <p className="text-gray-600 mb-6">
-                Enter a DApp URL above to start browsing, or use the bookmark button to save your favorite DApps.
-              </p>
-              <div className="space-y-2 text-sm text-gray-500">
-                <p>• Enter any DApp URL in the address bar</p>
-                <p>• Bookmark DApps for quick access</p>
-                <p>• Connect your wallet to interact with DApps</p>
-              </div>
-            </div>
-          </div>
-        ) : iframeError ? (
-          <div className="flex items-center justify-center h-screen bg-gray-50">
-            <div className="text-center max-w-md mx-auto px-4">
-              <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-6" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Cannot Load Website</h2>
-              <p className="text-gray-600 mb-6">
-                This website cannot be displayed in the browser due to security restrictions. 
-                Many websites block iframe embedding for security reasons.
-              </p>
-              <div className="space-y-4">
-                <button
-                  onClick={openInNewTab}
-                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Open in New Tab
-                </button>
-                <button
-                  onClick={() => {
-                    setIframeError(false);
-                    setCurrentUrl('');
-                    setUrlInput('');
-                  }}
-                  className="w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  Go Back
-                </button>
-              </div>
-              <div className="mt-6 text-sm text-gray-500">
-                <p>Common websites that don't allow iframe embedding:</p>
-                <ul className="mt-2 space-y-1">
-                  <li>• Block explorers (Polygonscan, Etherscan)</li>
-                  <li>• Social media platforms</li>
-                  <li>• Banking websites</li>
-                  <li>• Many security-focused sites</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {isLoading && (
-              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
-                <div className="text-center">
-                  <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-                  <p className="text-gray-600">Loading DApp...</p>
-                </div>
-              </div>
-            )}
-            
-            <iframe
-              ref={iframeRef}
-              src={currentUrl}
-              className="w-full h-screen"
-              onLoad={handleIframeLoad}
-              onError={handleIframeError}
-              title="DApp Browser"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation"
-            />
-          </>
-        )}
-      </div>
+       {/* Browser Content */}
+       <div className="flex-1">
+         {!currentUrl ? (
+           <div className="flex items-center justify-center h-screen bg-gray-50">
+             <div className="text-center max-w-md mx-auto px-4">
+               <Globe className="w-16 h-16 text-gray-400 mx-auto mb-6" />
+               <h2 className="text-2xl font-bold text-gray-900 mb-4">DApp Browser</h2>
+               <p className="text-gray-600 mb-6">
+                 Enter a DApp URL above to start browsing, or use the bookmark button to save your favorite DApps.
+               </p>
+               <div className="space-y-2 text-sm text-gray-500">
+                 <p>• Enter any DApp URL in the address bar</p>
+                 <p>• Bookmark DApps for quick access</p>
+                 <p>• Connect your wallet to interact with DApps</p>
+               </div>
+             </div>
+           </div>
+         ) : (
+           <div className="h-screen">
+             <AdvancedBrowser
+               url={currentUrl}
+               onUrlChange={setCurrentUrl}
+               onLoadStart={handleBrowserLoadStart}
+               onLoadEnd={handleBrowserLoadEnd}
+               onError={handleBrowserError}
+             />
+           </div>
+         )}
+       </div>
     </div>
   );
 }

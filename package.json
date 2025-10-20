@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "@types/node": "^20",
-    "typescript": "^5",
-    "turbo": "^1.13.4"
+    "turbo": "^1.13.4",
+    "typescript": "^5"
   }
 }

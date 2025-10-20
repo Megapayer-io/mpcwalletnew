@@ -13,4 +13,14 @@ export type {
   TransferNftParams
 } from './types.js';
 export { DEFAULT_NETWORKS } from './networks.js';
-export { encrypt, decrypt } from './crypto.js';
+export { 
+  encrypt, 
+  decrypt, 
+  securityAuditLogger, 
+  sessionManager, 
+  loginAttemptManager, 
+  biometricManager,
+  validatePasswordStrength,
+  secureWipe,
+} from './crypto.js';
+

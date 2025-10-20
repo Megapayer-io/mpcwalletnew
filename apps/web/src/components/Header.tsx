@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { useWalletStore } from '@/store/wallet';
-import { Wallet, Lock, Unlock } from 'lucide-react';
+import { Wallet, Lock, Unlock, Shield } from 'lucide-react';
+import SecuritySettings from './SecuritySettings';
 
 export function Header() {
   const { isUnlocked, address, currentNetwork, lock, logout } = useWalletStore();
+  const [showSecuritySettings, setShowSecuritySettings] = useState(false);
 
   const clearAllData = () => {
     if (confirm('Are you sure you want to clear all wallet data? This will remove all accounts and networks.')) {
@@ -99,6 +102,13 @@ export function Header() {
                   </div>
                 </div>
                 <button
+                  onClick={() => setShowSecuritySettings(true)}
+                  className="p-2 text-gray-400 hover:text-gray-600"
+                  title="Security Settings"
+                >
+                  <Shield className="h-4 w-4" />
+                </button>
+                <button
                   onClick={lock}
                   className="p-2 text-gray-400 hover:text-gray-600"
                   title="Lock wallet"
@@ -116,6 +126,12 @@ export function Header() {
           </div>
         </div>
       </div>
+
+      {/* Security Settings Modal */}
+        <SecuritySettings 
+          isOpen={showSecuritySettings} 
+          onClose={() => setShowSecuritySettings(false)} 
+        />
     </header>
   );
 }

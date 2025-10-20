@@ -1,5 +1,12 @@
 import { create } from 'zustand';
 import { EvmWallet, Network, SendEthParams, SendErc20Params, TokenBalanceParams, Account, ImportAccountParams, CreateAccountParams, TransferNftParams } from '@evm-wallet/sdk';
+import { 
+  securityAuditLogger, 
+  sessionManager, 
+  loginAttemptManager, 
+  biometricManager,
+  validatePasswordStrength 
+} from '@evm-wallet/sdk';
 
 interface TokenPrice {
   symbol: string;
@@ -51,6 +58,13 @@ interface WalletStore {
   tokenPrices: Record<string, TokenPrice>;
   nfts: Nft[];
   isLoadingNfts: boolean;
+  securityEvents: any[];
+  biometricAuth: any;
+  sessionInfo: {
+    isActive: boolean;
+    duration: number;
+    lastActivity: number;
+  };
 
   // Actions
   initialize: () => void;
@@ -73,6 +87,13 @@ interface WalletStore {
   transferNft: (params: TransferNftParams) => Promise<string>;
   clearError: () => void;
   logout: () => void;
+  
+  // Security methods
+  initializeSecurity: () => Promise<void>;
+  updateSessionActivity: () => void;
+  getSecurityEvents: () => any[];
+  validatePassword: (password: string) => { isValid: boolean; score: number; feedback: string[] };
+  authenticateWithBiometric: () => Promise<boolean>;
   
   // Account management
   switchAccount: (address: string) => void;
@@ -100,6 +121,13 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   tokenPrices: {},
   nfts: [],
   isLoadingNfts: false,
+  securityEvents: [],
+  biometricAuth: null,
+  sessionInfo: {
+    isActive: false,
+    duration: 0,
+    lastActivity: 0
+  },
 
   // Actions
   initialize: () => {
@@ -592,6 +620,68 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
         isLoading: false 
       });
       throw error;
+    }
+  },
+
+  // Security methods
+  initializeSecurity: async () => {
+    try {
+      // Initialize biometric authentication
+      const biometric = await biometricManager.initialize();
+      
+      // Start session
+      sessionManager.startSession();
+      
+      // Log security initialization
+      securityAuditLogger.logEvent('security_initialized', 'medium', 'Security system initialized');
+      
+      set({
+        biometricAuth: biometric,
+        sessionInfo: {
+          isActive: sessionManager.isSessionValid(),
+          duration: sessionManager.getSessionDuration(),
+          lastActivity: Date.now()
+        }
+      });
+    } catch (error) {
+      securityAuditLogger.logEvent('security_init_failed', 'high', `Failed to initialize security: ${error}`);
+    }
+  },
+
+  updateSessionActivity: () => {
+    sessionManager.updateActivity();
+    set({
+      sessionInfo: {
+        isActive: sessionManager.isSessionValid(),
+        duration: sessionManager.getSessionDuration(),
+        lastActivity: Date.now()
+      }
+    });
+  },
+
+  getSecurityEvents: () => {
+    const events = securityAuditLogger.getEvents();
+    set({ securityEvents: events });
+    return events;
+  },
+
+  validatePassword: (password: string) => {
+    return validatePasswordStrength(password);
+  },
+
+  authenticateWithBiometric: async () => {
+    try {
+      const success = await biometricManager.authenticate();
+      if (success) {
+        securityAuditLogger.logEvent('biometric_auth_success', 'medium', 'Biometric authentication successful');
+        sessionManager.startSession();
+      } else {
+        securityAuditLogger.logEvent('biometric_auth_failed', 'high', 'Biometric authentication failed');
+      }
+      return success;
+    } catch (error) {
+      securityAuditLogger.logEvent('biometric_auth_error', 'high', `Biometric authentication error: ${error}`);
+      return false;
     }
   },
 }));

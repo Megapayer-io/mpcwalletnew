@@ -40,6 +40,22 @@ interface Nft {
   balance?: string;
 }
 
+interface Transaction {
+  hash: string;
+  from: string;
+  to: string;
+  value: string;
+  timestamp: number;
+  blockNumber: number;
+  gasUsed: string;
+  gasPrice: string;
+  status: 'success' | 'pending' | 'failed';
+  type: 'send' | 'receive' | 'contract';
+  tokenSymbol?: string;
+  tokenName?: string;
+  tokenAddress?: string;
+}
+
 
 interface WalletStore {
   // State
@@ -58,6 +74,12 @@ interface WalletStore {
   tokenPrices: Record<string, TokenPrice>;
   nfts: Nft[];
   isLoadingNfts: boolean;
+  
+  // Transaction state
+  transactions: Transaction[];
+  isLoadingTransactions: boolean;
+  isTransactionScanning: boolean;
+  
   securityEvents: any[];
   biometricAuth: any;
   sessionInfo: {
@@ -85,6 +107,20 @@ interface WalletStore {
   clearPriceCache: () => void;
   fetchNfts: (address?: string) => Promise<void>;
   transferNft: (params: TransferNftParams) => Promise<string>;
+  
+  // Transaction methods
+  fetchTransactions: () => Promise<void>;
+  getTransactionHistory: (address: string, network: Network) => Promise<Transaction[]>;
+  stopTransactionScanning: () => void;
+  saveTransactionToHistory: (transaction: Transaction) => void;
+  loadTransactionHistory: () => void;
+  saveLastKnownBalance: (address: string, balance: string, networkSymbol: string) => void;
+  getLastKnownBalance: (address: string, networkSymbol: string) => string | null;
+  clearFakeReceiveTransactions: (address: string) => void;
+  findTransactionHash: (toAddress: string, amount: string, network: Network) => Promise<string | null>;
+  updateTransactionHashes: (address: string) => Promise<void>;
+  removeDuplicateTransactions: (transactions: Transaction[]) => Transaction[];
+  
   clearError: () => void;
   logout: () => void;
   
@@ -119,9 +155,15 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   isLoading: false,
   error: null,
   tokenPrices: {},
-  nfts: [],
-  isLoadingNfts: false,
-  securityEvents: [],
+    nfts: [],
+    isLoadingNfts: false,
+    
+    // Transaction state
+    transactions: [],
+    isLoadingTransactions: false,
+    isTransactionScanning: false,
+    
+    securityEvents: [],
   biometricAuth: null,
   sessionInfo: {
     isActive: false,
@@ -145,6 +187,11 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       currentNetwork: wallet.getCurrentNetwork() || null,
       networks: wallet.listNetworks(),
     });
+    
+    // Load transaction history if wallet is unlocked
+    if (wallet.isUnlocked() && wallet.getAddress()) {
+      get().loadTransactionHistory();
+    }
   },
 
   createWallet: async () => {
@@ -219,6 +266,11 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
         networks: wallet.listNetworks(),
         isLoading: false,
       });
+      
+      // Load transaction history after unlocking
+      if (wallet.getAddress()) {
+        get().loadTransactionHistory();
+      }
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to unlock wallet',
@@ -282,18 +334,69 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   },
 
   getBalance: async (address?: string) => {
-    const { wallet } = get();
+    const { wallet, currentNetwork } = get();
     if (!wallet) throw new Error('Wallet not initialized');
 
     set({ isLoading: true, error: null });
     
     try {
-      const balance = await wallet.getBalance(address);
+      const newBalance = await wallet.getBalance(address);
+      const walletAddress = wallet.getAddress();
+      
+      if (walletAddress && currentNetwork) {
+        // Get the last known balance for this specific wallet and network
+        const lastKnownBalance = get().getLastKnownBalance(walletAddress, currentNetwork.symbol);
+        
+        // Only check for balance increase if we have a valid previous balance
+        if (lastKnownBalance && newBalance) {
+          const oldBalanceNum = parseFloat(lastKnownBalance);
+          const newBalanceNum = parseFloat(newBalance);
+          
+          // Only create receive transaction if balance actually increased significantly
+          // (more than 0.000001 to avoid dust amounts)
+          if (newBalanceNum > oldBalanceNum && (newBalanceNum - oldBalanceNum) > 0.000001) {
+            const receivedAmount = (newBalanceNum - oldBalanceNum).toFixed(6);
+            
+            console.log(`💰 Balance increased by ${receivedAmount} ${currentNetwork.symbol} - looking for transaction hash...`);
+            
+            // Try to find the actual transaction hash
+            const transactionHash = await get().findTransactionHash(walletAddress, receivedAmount, currentNetwork);
+            
+            // Create a receive transaction record
+            const transaction: Transaction = {
+              hash: transactionHash || `receive-${Date.now()}`, // Use real hash if found, otherwise temporary
+              from: 'Unknown', // We don't know who sent it without blockchain scanning
+              to: walletAddress,
+              value: receivedAmount,
+              timestamp: Date.now(),
+              blockNumber: 0,
+              gasUsed: '0',
+              gasPrice: '0',
+              status: 'success',
+              type: 'receive',
+              tokenSymbol: currentNetwork.symbol,
+              tokenName: currentNetwork.name
+            };
+            
+            get().saveTransactionToHistory(transaction);
+            
+            if (transactionHash) {
+              console.log(`✅ Found real transaction hash: ${transactionHash} for ${receivedAmount} ${currentNetwork.symbol}`);
+            } else {
+              console.log(`⚠️ No transaction hash found, using temporary hash for ${receivedAmount} ${currentNetwork.symbol}`);
+            }
+          }
+        }
+        
+        // Save the new balance as the last known balance for this wallet/network
+        get().saveLastKnownBalance(walletAddress, newBalance, currentNetwork.symbol);
+      }
+      
       set({
-        balance,
+        balance: newBalance,
         isLoading: false,
       });
-      return balance;
+      return newBalance;
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to get balance',
@@ -304,13 +407,34 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   },
 
   sendEth: async (params: SendEthParams) => {
-    const { wallet } = get();
+    const { wallet, currentNetwork } = get();
     if (!wallet) throw new Error('Wallet not initialized');
 
     set({ isLoading: true, error: null });
     
     try {
       const hash = await wallet.sendEth(params);
+      
+      // Save transaction to local history
+      if (currentNetwork) {
+        const transaction: Transaction = {
+          hash,
+          from: wallet.getAddress() || '',
+          to: params.to,
+          value: params.valueEth,
+          timestamp: Date.now(),
+          blockNumber: 0, // Will be updated when we get real block data
+          gasUsed: '21000', // Standard ETH transfer gas
+          gasPrice: '20000000000', // Default gas price
+          status: 'success',
+          type: 'send',
+          tokenSymbol: currentNetwork.symbol,
+          tokenName: currentNetwork.name
+        };
+        
+        get().saveTransactionToHistory(transaction);
+      }
+      
       set({ isLoading: false });
       return hash;
     } catch (error) {
@@ -323,13 +447,35 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   },
 
   sendErc20: async (params: SendErc20Params) => {
-    const { wallet } = get();
+    const { wallet, currentNetwork } = get();
     if (!wallet) throw new Error('Wallet not initialized');
 
     set({ isLoading: true, error: null });
     
     try {
       const hash = await wallet.sendErc20(params);
+      
+      // Save transaction to local history
+      if (currentNetwork) {
+        const transaction: Transaction = {
+          hash,
+          from: wallet.getAddress() || '',
+          to: params.to,
+          value: params.amount,
+          timestamp: Date.now(),
+          blockNumber: 0, // Will be updated when we get real block data
+          gasUsed: '65000', // Standard ERC20 transfer gas
+          gasPrice: '20000000000', // Default gas price
+          status: 'success',
+          type: 'send',
+          tokenSymbol: 'TOKEN', // We'll need to get this from token metadata
+          tokenName: 'Token', // We'll need to get this from token metadata
+          tokenAddress: params.tokenAddress
+        };
+        
+        get().saveTransactionToHistory(transaction);
+      }
+      
       set({ isLoading: false });
       return hash;
     } catch (error) {
@@ -621,6 +767,277 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       });
       throw error;
     }
+  },
+
+  // Transaction methods
+  fetchTransactions: async () => {
+    const { wallet } = get();
+    
+    if (!wallet) {
+      throw new Error('Wallet not initialized');
+    }
+
+    const address = wallet.getAddress();
+    if (!address) {
+      throw new Error('No address available');
+    }
+
+    set({ isLoadingTransactions: true, error: null });
+
+    try {
+      // Load transactions from local storage
+      get().loadTransactionHistory();
+      set({ isLoadingTransactions: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to load transaction history',
+        isLoadingTransactions: false
+      });
+      throw error;
+    }
+  },
+
+  stopTransactionScanning: () => {
+    set({ isTransactionScanning: false, isLoadingTransactions: false });
+  },
+
+  saveTransactionToHistory: (transaction: Transaction) => {
+    const { wallet } = get();
+    if (!wallet) return;
+
+    const address = wallet.getAddress();
+    if (!address) return;
+
+    try {
+      // Get existing transactions from localStorage
+      const storageKey = `mpc-wallet-transactions-${address}`;
+      const existingTransactions = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      
+      // Check for duplicates based on hash, amount, and timestamp (within 5 minutes)
+      const isDuplicate = existingTransactions.some((existingTx: Transaction) => {
+        // Same hash
+        if (existingTx.hash === transaction.hash) return true;
+        
+        // Same amount and type, and within 5 minutes (for receive transactions)
+        if (transaction.type === 'receive' && existingTx.type === 'receive') {
+          const timeDiff = Math.abs(existingTx.timestamp - transaction.timestamp);
+          const amountMatch = Math.abs(parseFloat(existingTx.value) - parseFloat(transaction.value)) < 0.000001;
+          
+          if (amountMatch && timeDiff < 5 * 60 * 1000) { // 5 minutes in milliseconds
+            return true;
+          }
+        }
+        
+        return false;
+      });
+      
+      if (isDuplicate) {
+        console.log('Duplicate transaction detected, skipping save:', transaction.hash);
+        return;
+      }
+      
+      // Add new transaction at the beginning (most recent first)
+      const updatedTransactions = [transaction, ...existingTransactions];
+      
+      // Keep only last 100 transactions to avoid storage bloat
+      const limitedTransactions = updatedTransactions.slice(0, 100);
+      
+      // Save back to localStorage
+      localStorage.setItem(storageKey, JSON.stringify(limitedTransactions));
+      
+      // Update store state
+      set({ transactions: limitedTransactions });
+      
+      console.log('Transaction saved to local history:', transaction.hash);
+    } catch (error) {
+      console.error('Failed to save transaction to history:', error);
+    }
+  },
+
+  saveLastKnownBalance: (address: string, balance: string, networkSymbol: string) => {
+    try {
+      const balanceKey = `mpc-wallet-last-balance-${address}-${networkSymbol}`;
+      localStorage.setItem(balanceKey, balance);
+    } catch (error) {
+      console.error('Failed to save last known balance:', error);
+    }
+  },
+
+  getLastKnownBalance: (address: string, networkSymbol: string): string | null => {
+    try {
+      const balanceKey = `mpc-wallet-last-balance-${address}-${networkSymbol}`;
+      return localStorage.getItem(balanceKey);
+    } catch (error) {
+      console.error('Failed to get last known balance:', error);
+      return null;
+    }
+  },
+
+  findTransactionHash: async (toAddress: string, amount: string, network: Network): Promise<string | null> => {
+    try {
+      console.log(`🔍 Looking for transaction: ${amount} to ${toAddress} on ${network.name}`);
+      
+      // Get recent blocks to find the transaction
+      const currentBlock = await getCurrentBlockNumber(network.rpcUrl);
+      const blocksToCheck = 50; // Check last 50 blocks
+      
+      for (let i = 0; i < blocksToCheck; i++) {
+        const blockNumber = currentBlock - i;
+        try {
+          const block = await getBlockByNumber(network.rpcUrl, blockNumber);
+          
+          if (!block || !block.transactions) continue;
+          
+          // Look for transactions to our address with the matching amount
+          for (const tx of block.transactions) {
+            if (tx.to?.toLowerCase() === toAddress.toLowerCase()) {
+              // Convert transaction value to the same format as our amount
+              const txValue = formatEther(tx.value || '0');
+              
+              // Check if amounts match (with small tolerance for precision)
+              const amountNum = parseFloat(amount);
+              const txValueNum = parseFloat(txValue);
+              const tolerance = 0.000001; // Small tolerance for floating point precision
+              
+              if (Math.abs(amountNum - txValueNum) < tolerance) {
+                console.log(`✅ Found transaction hash: ${tx.hash} for amount ${amount}`);
+                return tx.hash;
+              }
+            }
+          }
+          
+          // Add small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+        } catch (blockError) {
+          console.warn(`Error checking block ${blockNumber}:`, blockError);
+          continue;
+        }
+      }
+      
+      console.log(`❌ No transaction hash found for amount ${amount} to ${toAddress}`);
+      return null;
+    } catch (error) {
+      console.error('Error finding transaction hash:', error);
+      return null;
+    }
+  },
+
+  clearFakeReceiveTransactions: (address: string) => {
+    try {
+      const storageKey = `mpc-wallet-transactions-${address}`;
+      const existingTransactions = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      
+      // Remove transactions that start with "receive-" (fake receive transactions)
+      const filteredTransactions = existingTransactions.filter((tx: Transaction) => 
+        !tx.hash.startsWith('receive-')
+      );
+      
+      localStorage.setItem(storageKey, JSON.stringify(filteredTransactions));
+      set({ transactions: filteredTransactions });
+      
+      console.log(`Cleared ${existingTransactions.length - filteredTransactions.length} fake receive transactions`);
+    } catch (error) {
+      console.error('Failed to clear fake receive transactions:', error);
+    }
+  },
+
+  updateTransactionHashes: async (address: string) => {
+    const { currentNetwork } = get();
+    if (!currentNetwork) return;
+
+    try {
+      const storageKey = `mpc-wallet-transactions-${address}`;
+      const existingTransactions = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      
+      let updatedCount = 0;
+      
+      // Find transactions with temporary hashes and try to get real ones
+      for (let i = 0; i < existingTransactions.length; i++) {
+        const tx = existingTransactions[i];
+        
+        if (tx.hash.startsWith('receive-') && tx.type === 'receive') {
+          console.log(`🔍 Looking for real hash for transaction: ${tx.value} ${tx.tokenSymbol}`);
+          
+          const realHash = await get().findTransactionHash(address, tx.value, currentNetwork);
+          
+          if (realHash) {
+            existingTransactions[i].hash = realHash;
+            updatedCount++;
+            console.log(`✅ Updated transaction hash: ${realHash}`);
+          }
+          
+          // Add delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+      
+      if (updatedCount > 0) {
+        localStorage.setItem(storageKey, JSON.stringify(existingTransactions));
+        set({ transactions: existingTransactions });
+        console.log(`🎉 Updated ${updatedCount} transaction hashes`);
+      }
+      
+    } catch (error) {
+      console.error('Failed to update transaction hashes:', error);
+    }
+  },
+
+  loadTransactionHistory: () => {
+    const { wallet } = get();
+    if (!wallet) return;
+
+    const address = wallet.getAddress();
+    if (!address) return;
+
+    try {
+      const storageKey = `mpc-wallet-transactions-${address}`;
+      const savedTransactions = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      
+      // Clean up duplicates when loading
+      const cleanedTransactions = get().removeDuplicateTransactions(savedTransactions);
+      
+      if (cleanedTransactions.length !== savedTransactions.length) {
+        localStorage.setItem(storageKey, JSON.stringify(cleanedTransactions));
+        console.log(`Removed ${savedTransactions.length - cleanedTransactions.length} duplicate transactions`);
+      }
+      
+      set({ transactions: cleanedTransactions });
+      console.log(`Loaded ${cleanedTransactions.length} transactions from local history`);
+    } catch (error) {
+      console.error('Failed to load transaction history:', error);
+      set({ transactions: [] });
+    }
+  },
+
+  removeDuplicateTransactions: (transactions: Transaction[]): Transaction[] => {
+    const seen = new Set<string>();
+    const uniqueTransactions: Transaction[] = [];
+    
+    for (const tx of transactions) {
+      // Create a unique key based on hash, amount, type, and timestamp (within 5 minutes)
+      let key = `${tx.hash}-${tx.value}-${tx.type}`;
+      
+      // For receive transactions, also consider timestamp proximity
+      if (tx.type === 'receive') {
+        const timestampKey = Math.floor(tx.timestamp / (5 * 60 * 1000)); // 5-minute buckets
+        key += `-${timestampKey}`;
+      }
+      
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueTransactions.push(tx);
+      }
+    }
+    
+    return uniqueTransactions;
+  },
+
+  getTransactionHistory: async (address: string, network: Network): Promise<Transaction[]> => {
+    // This method is now deprecated - we use local storage instead
+    // It's kept for compatibility but will be removed in future versions
+    console.log('getTransactionHistory is deprecated - using local storage instead');
+    return [];
   },
 
   // Security methods
@@ -915,3 +1332,88 @@ async function fetchNftsFromApis(address: string, chainId: number): Promise<Nft[
   console.log(`Total unique NFTs found: ${uniqueNfts.length}`);
   return uniqueNfts;
 }
+
+// RPC Helper Functions for Transaction Hash Lookup
+async function getCurrentBlockNumber(rpcUrl: string): Promise<number> {
+  const response = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'eth_blockNumber',
+      params: [],
+      id: 1,
+    }),
+  });
+
+  const data = await response.json();
+  return parseInt(data.result, 16);
+}
+
+async function getBlockByNumber(rpcUrl: string, blockNumber: number): Promise<any> {
+  const response = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'eth_getBlockByNumber',
+      params: [`0x${blockNumber.toString(16)}`, true], // true to include full transaction objects
+      id: 1,
+    }),
+  });
+
+  const data = await response.json();
+  return data.result;
+}
+
+function formatEther(wei: string): string {
+  // Convert wei to ether (divide by 10^18)
+  const weiBigInt = BigInt(wei);
+  const etherBigInt = weiBigInt / BigInt(10 ** 18);
+  const remainder = weiBigInt % BigInt(10 ** 18);
+  
+  if (remainder === BigInt(0)) {
+    return etherBigInt.toString();
+  }
+  
+  // Convert remainder to decimal
+  const remainderStr = remainder.toString().padStart(18, '0');
+  const decimalPart = remainderStr.replace(/0+$/, ''); // Remove trailing zeros
+  
+  if (decimalPart === '') {
+    return etherBigInt.toString();
+  }
+  
+  return `${etherBigInt.toString()}.${decimalPart}`;
+}
+
+// Utility function for formatting amounts
+function formatAmount(amount: string): string {
+  const num = parseFloat(amount);
+  if (isNaN(num)) return amount;
+  
+  // For very small amounts, show more decimal places
+  if (num < 0.000001) {
+    return num.toFixed(8);
+  }
+  // For small amounts, show 6 decimal places
+  else if (num < 0.01) {
+    return num.toFixed(6);
+  }
+  // For normal amounts, show 4 decimal places
+  else if (num < 1) {
+    return num.toFixed(4);
+  }
+  // For larger amounts, show 2 decimal places
+  else {
+    return num.toFixed(2);
+  }
+}
+
+// Local Storage Transaction History System
+// This system saves transactions that happen within our wallet to localStorage
+// for the user's personal transaction history

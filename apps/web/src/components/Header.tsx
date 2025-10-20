@@ -78,6 +78,12 @@ export function Header() {
               NFTs
             </Link>
             <Link
+              href="/history"
+              className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              History
+            </Link>
+            <Link
               href="/networks"
               className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >

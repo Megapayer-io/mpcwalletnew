@@ -15,7 +15,8 @@ import {
   EyeOff,
   Mail,
   MessageSquare,
-  Link as LinkIcon
+  Link as LinkIcon,
+  AlertCircle
 } from 'lucide-react';
 
 interface ReceiveFormProps {

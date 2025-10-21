@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useWalletStore } from '@/store/wallet';
 import { RefreshCw, Image as ImageIcon, ExternalLink, Send, Eye } from 'lucide-react';
-import NftTransferModal from '@/components/NftTransferModal';
+// import NftTransferModal from '@/components/NftTransferModal';
 
 export default function NftsPage() {
   const { 
@@ -235,16 +235,23 @@ export default function NftsPage() {
           </div>
         )}
 
-        {/* Transfer Modal */}
+        {/* Transfer Modal - Coming Soon */}
         {showTransferModal && selectedNft && (
-          <NftTransferModal
-            nft={selectedNft}
-            isOpen={showTransferModal}
-            onClose={() => {
-              setShowTransferModal(false);
-              setSelectedNft(null);
-            }}
-          />
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4">Transfer NFT</h3>
+              <p className="text-gray-600 mb-4">NFT transfer functionality coming soon...</p>
+              <button
+                onClick={() => {
+                  setShowTransferModal(false);
+                  setSelectedNft(null);
+                }}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         )}
 
         {/* NFT Details Modal */}

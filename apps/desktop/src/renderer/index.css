@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Desktop-specific styles */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  /* Custom title bar styles */
+  .title-bar {
+    -webkit-app-region: drag;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    color: white;
+    font-weight: 500;
+  }
+  
+  .title-bar-controls {
+    -webkit-app-region: no-drag;
+    display: flex;
+    gap: 8px;
+  }
+  
+  .title-bar-button {
+    @apply w-6 h-6 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors;
+  }
+  
+  /* Desktop-optimized sidebar */
+  .desktop-sidebar {
+    width: 280px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-right: 1px solid #e2e8f0;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Desktop-optimized content */
+  .desktop-content {
+    flex: 1;
+    background: #f8fafc;
+    overflow-y: auto;
+  }
+  
+  /* Desktop-specific animations */
+  .desktop-fade-in {
+    animation: desktopFadeIn 0.3s ease-out;
+  }
+  
+  .desktop-slide-in {
+    animation: desktopSlideIn 0.3s ease-out;
+  }
+  
+  /* Native-like buttons */
+  .native-button {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    @apply hover:scale-105 active:scale-95;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .native-button-primary {
+    @apply native-button bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+  }
+  
+  .native-button-secondary {
+    @apply native-button bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500;
+  }
+  
+  /* Desktop-optimized cards */
+  .desktop-card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200;
+    @apply hover:shadow-md transition-shadow duration-200;
+  }
+  
+  /* System tray integration styles */
+  .tray-indicator {
+    @apply w-2 h-2 bg-green-500 rounded-full animate-pulse;
+  }
+}
+
+@layer utilities {
+  /* Desktop-specific utilities */
+  .desktop-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+  }
+  
+  .desktop-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .desktop-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  
+  .desktop-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  
+  .desktop-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+}
+
+/* Keyframes for desktop animations */
+@keyframes desktopFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes desktopSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Dark mode support for desktop */
+@media (prefers-color-scheme: dark) {
+  .title-bar {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  }
+  
+  .desktop-sidebar {
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border-right-color: #334155;
+  }
+  
+  .desktop-content {
+    background: #0f172a;
+  }
+  
+  .desktop-card {
+    @apply bg-slate-800 border-slate-700;
+  }
+}

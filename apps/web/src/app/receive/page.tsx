@@ -1,96 +1,67 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
-import { Header } from '@/components/Header';
+import { Layout } from '@/components/layout/Layout';
 import { ReceiveForm } from '@/components/ReceiveForm';
-import { AlertCircle, Download, Share2, Copy, QrCode } from 'lucide-react';
+import { AlertCircle, Info } from 'lucide-react';
 
 export default function ReceivePage() {
+  const router = useRouter();
   const { isUnlocked, address, currentNetwork } = useWalletStore();
 
+  // Redirect to unlock page if wallet is locked
+  useEffect(() => {
+    if (!isUnlocked) {
+      router.push('/unlock');
+    }
+  }, [isUnlocked, router]);
+
+  // Show loading while redirecting
   if (!isUnlocked) {
     return (
-      <div className="min-h-screen">
-        <Header />
-        <div className="max-w-2xl mx-auto px-4 py-8">
-          <div className="text-center">
-            <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Wallet Locked</h1>
-            <p className="text-gray-600">
-              Please unlock your wallet to view your receive address.
-            </p>
-          </div>
+      <Layout title="Receive Funds" subtitle="Share your wallet address to receive payments">
+        <div className="max-w-2xl mx-auto text-center py-12">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Redirecting to unlock page...</h1>
+          <p className="text-gray-600">
+            Please wait while we redirect you to unlock your wallet.
+          </p>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <Header />
-      
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Receive Funds</h1>
-          <p className="text-gray-600">Share your wallet address to receive payments</p>
-        </div>
-
-        {/* Network Information */}
-        <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
-          <div className="flex items-center space-x-3">
-            <div className="h-3 w-3 bg-green-500 rounded-full"></div>
+    <Layout title="Receive Funds" subtitle="Share your wallet address to receive payments">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <ReceiveForm />
+        
+        {/* Important Information */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <div className="flex items-start space-x-3">
+            <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Active Network</h3>
-              <p className="text-green-700 font-medium">
-                {currentNetwork?.name} (Chain ID: {currentNetwork?.chainId})
-              </p>
-              <p className="text-sm text-gray-600">
-                Make sure the sender is using the same network
-              </p>
+              <h3 className="text-lg font-semibold text-blue-900 mb-3">Important Information</h3>
+              <div className="text-blue-800 text-sm space-y-2">
+                <p>
+                  <strong>Network:</strong> Make sure the sender is using the same network ({currentNetwork?.name}) as your wallet.
+                </p>
+                <p>
+                  <strong>Address Verification:</strong> Always verify the address before sharing. This address is unique to your wallet.
+                </p>
+                <p>
+                  <strong>Token Support:</strong> This address can receive {currentNetwork?.symbol} and compatible tokens on the {currentNetwork?.name} network.
+                </p>
+                <p>
+                  <strong>Security:</strong> Never share your private key or seed phrase. Only share your public address.
+                </p>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Receive Form */}
-        <ReceiveForm />
-
-        {/* Important Information */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">Important Information</h3>
-          <div className="text-blue-800 text-sm space-y-2">
-            <p>
-              <strong>Network Compatibility:</strong> Only send tokens that are compatible with {currentNetwork?.name}.
-              Sending tokens from other networks may result in permanent loss.
-            </p>
-            <p>
-              <strong>Address Verification:</strong> Always verify the recipient address before sending.
-              This address is unique to your wallet on {currentNetwork?.name}.
-            </p>
-            <p>
-              <strong>Transaction Time:</strong> Transactions typically take a few minutes to confirm,
-              depending on network congestion.
-            </p>
-            <p>
-              <strong>QR Code:</strong> The QR code contains your wallet address and can be scanned by other wallets
-              to send you funds directly.
-            </p>
-            {currentNetwork?.blockExplorer && (
-              <p>
-                <strong>Block Explorer:</strong> Track incoming transactions on{' '}
-                <a
-                  href={currentNetwork.blockExplorer}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-700 underline"
-                >
-                  {currentNetwork.blockExplorer}
-                </a>
-              </p>
-            )}
-          </div>
-        </div>
       </div>
-    </div>
+    </Layout>
   );
 }

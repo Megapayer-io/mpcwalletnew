@@ -14,5 +14,14 @@
     "@types/node": "^20",
     "turbo": "^1.13.4",
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@reown/appkit": "^1.8.10",
+    "@reown/appkit-adapter-ethers": "^1.8.10",
+    "@reown/appkit-adapter-wagmi": "^1.8.10",
+    "@types/qrcode": "^1.5.5",
+    "playwright-core": "^1.56.1",
+    "puppeteer-core": "^24.25.0",
+    "qrcode": "^1.5.4"
   }
 }

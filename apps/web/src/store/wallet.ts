@@ -203,6 +203,7 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     try {
       const result = await wallet.createWallet();
       set({
+        hasWallet: true,
         isUnlocked: true,
         address: result.address,
         isLoading: false,
@@ -226,6 +227,7 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     try {
       const result = await wallet.importFromMnemonic(mnemonic);
       set({
+        hasWallet: true,
         isUnlocked: true,
         address: result.address,
         isLoading: false,

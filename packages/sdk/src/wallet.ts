@@ -157,12 +157,25 @@ export class EvmWallet {
       // Load accounts data
       this.loadAccounts();
       
-      // Set current account if available
+      // Set current account if available, or use the first account
       if (this.state.currentAccount) {
         const accountData = this.accounts.get(this.state.currentAccount.address.toLowerCase());
         if (accountData) {
           this.account = accountData.account;
           this.privateKey = accountData.privateKey as `0x${string}`;
+        }
+      } else if (this.accounts.size > 0) {
+        // If no current account is set, use the first available account
+        const firstAccount = this.accounts.values().next().value;
+        if (firstAccount) {
+          this.account = firstAccount.account;
+          this.privateKey = firstAccount.privateKey as `0x${string}`;
+          // Set the current account in state
+          this.state.currentAccount = {
+            address: firstAccount.account.address,
+            name: 'Account 1',
+            isImported: false
+          };
         }
       }
       
@@ -373,6 +386,26 @@ export class EvmWallet {
       throw new Error('Mnemonic not available. Wallet must be unlocked to create accounts.');
     }
     return this.mnemonic;
+  }
+
+  /**
+   * Get private key for current account
+   */
+  getPrivateKey(): string {
+    if (!this.state.isUnlocked || !this.state.currentAccount) {
+      throw new Error('Wallet must be unlocked to get private key');
+    }
+    return this.exportPrivateKey(this.state.currentAccount.address);
+  }
+
+  /**
+   * Get mnemonic phrase (public method)
+   */
+  getMnemonicPhrase(): string {
+    if (!this.state.isUnlocked) {
+      throw new Error('Wallet must be unlocked to get mnemonic');
+    }
+    return this.getMnemonic();
   }
 
   /**

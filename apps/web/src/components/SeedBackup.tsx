@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Copy, Download, Check, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CustomIcons } from './icons/CustomIcons';
+import { SeedPhraseQuiz } from './SeedPhraseQuiz';
 
 interface SeedBackupProps {
   mnemonic: string;
@@ -12,6 +13,15 @@ export function SeedBackup({ mnemonic, onComplete }: SeedBackupProps) {
   const [showMnemonic, setShowMnemonic] = useState(false);
   const [copied, setCopied] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [animationStep, setAnimationStep] = useState(0);
+  const [showQuiz, setShowQuiz] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimationStep(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleCopy = async () => {
     try {
@@ -24,118 +34,192 @@ export function SeedBackup({ mnemonic, onComplete }: SeedBackupProps) {
   };
 
   const handleDownload = () => {
-    const content = `MPC Wallet Seed Phrase Backup\n\nIMPORTANT: Keep this safe and never share it with anyone!\n\nYour seed phrase:\n${mnemonic}\n\nGenerated on: ${new Date().toLocaleString()}\n\nThis seed phrase can be used to recover your wallet. Anyone with access to this phrase can control your funds.`;
+    const content = `Megapayer Wallet Seed Phrase Backup\n\nIMPORTANT: Keep this safe and never share it with anyone!\n\nYour seed phrase:\n${mnemonic}\n\nGenerated on: ${new Date().toLocaleString()}\n\nThis seed phrase can be used to recover your wallet. Anyone with access to this phrase can control your funds.`;
     
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `evm-wallet-backup-${Date.now()}.txt`;
+    a.download = `megapayer-wallet-backup-${Date.now()}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-        <h3 className="text-lg font-semibold text-yellow-800 mb-2">
-          ⚠️ Important Security Warning
-        </h3>
-        <p className="text-yellow-700 text-sm">
-          Your seed phrase is the only way to recover your wallet. Write it down and store it safely.
-          Never share it with anyone or store it digitally in an insecure location.
-        </p>
-      </div>
+  const handleBackupComplete = () => {
+    setShowQuiz(true);
+  };
 
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Backup Your Seed Phrase</h2>
-        
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Your 12-word seed phrase:
-          </label>
-          <div className="relative">
-            <div className="p-4 bg-gray-50 border border-gray-300 rounded-md font-mono text-sm">
-              {showMnemonic ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {mnemonic.split(' ').map((word, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <span className="text-gray-500 text-xs w-6">{index + 1}.</span>
-                      <span className="text-gray-900">{word}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {Array.from({ length: 12 }, (_, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <span className="text-gray-500 text-xs w-6">{index + 1}.</span>
-                      <span className="text-gray-400">••••••••</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+  const handleQuizComplete = () => {
+    onComplete();
+  };
+
+  const handleBackToBackup = () => {
+    setShowQuiz(false);
+  };
+
+  const words = mnemonic.split(' ');
+
+  // Show quiz if user has completed backup
+  if (showQuiz) {
+    return (
+      <SeedPhraseQuiz 
+        mnemonic={mnemonic} 
+        onComplete={handleQuizComplete}
+        onBack={handleBackToBackup}
+      />
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      {/* Security Warning */}
+      <div className={`megapayer-panel-soft border border-yellow-400/30 rounded-2xl p-8 mb-8 shadow-megapayer transition-all duration-1000 delay-600 ${animationStep >= 1 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+        <div className="flex items-start space-x-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+            <CustomIcons.AlertTriangle className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-megapayer-text mb-3 font-heading">Critical Security Warning</h3>
+            <div className="text-megapayer-muted space-y-3">
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mt-2 flex-shrink-0"></div>
+                <p>Your seed phrase is the <strong className="text-megapayer-text">only way</strong> to recover your wallet</p>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mt-2 flex-shrink-0"></div>
+                <p>Write it down on paper and store it in a <strong className="text-megapayer-text">safe place</strong></p>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mt-2 flex-shrink-0"></div>
+                <p><strong className="text-red-500">Never</strong> share it with anyone or store it digitally</p>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowMnemonic(!showMnemonic)}
-              className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600"
-            >
-              {showMnemonic ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </button>
           </div>
         </div>
+      </div>
 
-        <div className="flex space-x-3 mb-6">
+      {/* Seed Phrase Display */}
+      <div className={`megapayer-panel rounded-2xl shadow-megapayer border border-megapayer-border p-8 mb-8 transition-all duration-1000 delay-800 ${animationStep >= 1 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+        <div className="text-center mb-6">
+          <h3 className="text-2xl font-bold text-megapayer-text mb-2 font-heading">Your Recovery Seed Phrase</h3>
+          <p className="text-megapayer-muted">24 words that give you complete control over your wallet</p>
+        </div>
+
+        <div className="relative">
+          <div className="megapayer-panel-soft border border-megapayer-border rounded-xl p-6 font-mono">
+            {showMnemonic ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {words.map((word, index) => (
+                  <div key={index} className="flex items-center space-x-2 p-2 rounded-lg bg-gradient-to-r from-megapayer-teal/10 to-megapayer-violet/10 border border-megapayer-teal/20 hover:shadow-md transition-all duration-200">
+                    <span className="text-megapayer-teal text-xs font-bold w-6 text-center">{index + 1}</span>
+                    <span className="text-megapayer-text font-medium">{word}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {Array.from({ length: 24 }, (_, index) => (
+                  <div key={index} className="flex items-center space-x-2 p-2 rounded-lg bg-megapayer-panel border border-megapayer-border">
+                    <span className="text-megapayer-muted text-xs font-bold w-6 text-center">{index + 1}</span>
+                    <span className="text-megapayer-muted font-medium">••••••••</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <button
+            type="button"
+            onClick={() => setShowMnemonic(!showMnemonic)}
+            className="absolute top-4 right-4 w-10 h-10 bg-gradient-to-br from-megapayer-teal to-megapayer-violet rounded-xl flex items-center justify-center text-white hover:shadow-lg transition-all duration-200 hover:scale-105"
+          >
+            {showMnemonic ? (
+              <CustomIcons.EyeOff className="w-5 h-5" />
+            ) : (
+              <CustomIcons.Eye className="w-5 h-5" />
+            )}
+          </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 mt-6">
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 flex items-center justify-center space-x-3 megapayer-btn-primary py-4 px-6 rounded-xl font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
           >
             {copied ? (
-              <Check className="h-4 w-4" />
+              <>
+                <CustomIcons.CheckCircle className="w-5 h-5" />
+                <span>Copied!</span>
+              </>
             ) : (
-              <Copy className="h-4 w-4" />
+              <>
+                <CustomIcons.Copy className="w-5 h-5" />
+                <span>Copy to Clipboard</span>
+              </>
             )}
-            <span>{copied ? 'Copied!' : 'Copy'}</span>
           </button>
           
           <button
             type="button"
             onClick={handleDownload}
-            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="flex-1 flex items-center justify-center space-x-3 megapayer-panel-soft text-megapayer-text py-4 px-6 rounded-xl font-semibold border border-megapayer-border hover:bg-megapayer-panel transition-all duration-200 hover:scale-[1.02]"
           >
-            <Download className="h-4 w-4" />
-            <span>Download .txt</span>
+            <CustomIcons.Download className="w-5 h-5" />
+            <span>Download Backup</span>
           </button>
         </div>
+      </div>
 
-        <div className="mb-6">
-          <label className="flex items-start space-x-3">
+      {/* Confirmation Section */}
+      <div className={`megapayer-panel-soft border border-megapayer-border rounded-2xl p-8 shadow-megapayer transition-all duration-1000 delay-1000 ${animationStep >= 1 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+        <div className="text-center mb-6">
+          <h3 className="text-xl font-bold text-megapayer-text mb-2 font-heading">Final Confirmation</h3>
+          <p className="text-megapayer-muted">Please confirm that you have securely backed up your seed phrase</p>
+        </div>
+
+        <div className="flex items-start space-x-4 mb-6">
+          <div className="flex-shrink-0 mt-1">
             <input
               type="checkbox"
               checked={acknowledged}
               onChange={(e) => setAcknowledged(e.target.checked)}
-              className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="w-5 h-5 text-megapayer-teal focus:ring-megapayer-teal border-megapayer-border rounded"
             />
-            <span className="text-sm text-gray-700">
-              I have securely backed up my seed phrase and understand that losing it means losing access to my funds forever.
-            </span>
-          </label>
+          </div>
+          <div className="text-megapayer-muted">
+            <p className="font-semibold text-megapayer-text mb-2">I understand and confirm that:</p>
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-start space-x-2">
+                <div className="w-1.5 h-1.5 bg-megapayer-teal rounded-full mt-2 flex-shrink-0"></div>
+                <span>I have written down my seed phrase on paper</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <div className="w-1.5 h-1.5 bg-megapayer-teal rounded-full mt-2 flex-shrink-0"></div>
+                <span>I have stored it in a safe and secure location</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <div className="w-1.5 h-1.5 bg-megapayer-teal rounded-full mt-2 flex-shrink-0"></div>
+                <span>I understand that losing this phrase means losing access to my funds forever</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <div className="w-1.5 h-1.5 bg-megapayer-teal rounded-full mt-2 flex-shrink-0"></div>
+                <span>I will never share this phrase with anyone</span>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <button
-          onClick={onComplete}
+          onClick={handleBackupComplete}
           disabled={!acknowledged}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full megapayer-btn-primary py-4 px-6 rounded-xl text-lg font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
         >
-          I've Backed Up My Seed Phrase
+          <CustomIcons.CheckCircle className="w-5 h-5" />
+          <span>I've Securely Backed Up My Seed Phrase</span>
         </button>
       </div>
     </div>

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Eye, EyeOff, AlertCircle, Shield } from 'lucide-react';
+import { CustomIcons } from './icons/CustomIcons';
+import { useWalletStore } from '@/store/wallet';
 
 interface PinProtectionProps {
   isOpen: boolean;
@@ -19,21 +20,19 @@ export const PinProtection: React.FC<PinProtectionProps> = ({
   title,
   description
 }) => {
-  const [pin, setPin] = useState('');
-  const [showPin, setShowPin] = useState(false);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+
+  const { unlock } = useWalletStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!pin.trim()) {
-      setError('Please enter your PIN');
-      return;
-    }
-
-    if (pin.length < 4) {
-      setError('PIN must be at least 4 digits');
+    if (!password.trim()) {
+      setError('Please enter your password');
       return;
     }
 
@@ -41,27 +40,35 @@ export const PinProtection: React.FC<PinProtectionProps> = ({
     setError('');
 
     try {
-      // Simulate PIN verification (in real app, this would verify against stored PIN)
-      // For now, we'll accept any 4+ digit PIN
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Use the wallet's unlock function to verify the password
+      await unlock(password);
       
-      if (pin.length >= 4) {
-        onSuccess();
-        setPin('');
-        onClose();
-      } else {
-        setError('Invalid PIN');
-      }
+      // If unlock succeeds, call onSuccess
+      setAttempts(0); // Reset attempts on successful verification
+      onSuccess();
+      setPassword('');
+      onClose();
     } catch (error) {
-      setError('PIN verification failed');
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
+      
+      if (newAttempts >= 3) {
+        setError('Too many failed attempts. Please try again later.');
+        setTimeout(() => {
+          handleClose();
+        }, 3000);
+      } else {
+        setError(`Invalid password. ${3 - newAttempts} attempts remaining.`);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleClose = () => {
-    setPin('');
+    setPassword('');
     setError('');
+    setAttempts(0);
     onClose();
   };
 
@@ -69,82 +76,85 @@ export const PinProtection: React.FC<PinProtectionProps> = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-gradient-to-br from-megapayer-accent/20 via-megapayer-violet/10 to-megapayer-teal/20 backdrop-blur-md flex items-center justify-center p-4 z-50"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={handleClose}
         >
           <motion.div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
+            className="megapayer-panel rounded-3xl shadow-2xl w-full max-w-md p-8 relative border border-megapayer-border/50 backdrop-blur-xl bg-white/95 overflow-hidden"
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Decorative Background Elements */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-megapayer-accent/10 to-megapayer-violet/5 rounded-full"></div>
+            <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-to-br from-megapayer-teal/10 to-megapayer-emerald/5 rounded-full"></div>
+            
             <button
               onClick={handleClose}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-xl hover:bg-megapayer-panel-soft text-megapayer-muted hover:text-megapayer-text transition-all duration-200 z-10"
             >
-              <Lock className="h-5 w-5" />
+              <CustomIcons.X className="h-5 w-5" />
             </button>
 
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-white" />
+            <div className="text-center mb-8 relative z-10">
+              <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <CustomIcons.Shield className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">{title}</h2>
-              <p className="text-gray-600">{description}</p>
+              <h2 className="text-2xl font-bold text-megapayer-text mb-3 font-heading">{title}</h2>
+              <p className="text-megapayer-muted">{description}</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Enter your PIN
+                <label className="block text-sm font-semibold text-megapayer-text mb-3">
+                  Enter your wallet password
                 </label>
                 <div className="relative">
                   <input
-                    type={showPin ? 'text' : 'password'}
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                    placeholder="Enter your PIN"
-                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-widest"
-                    maxLength={8}
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your wallet password"
+                    className="w-full px-4 py-4 pr-12 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-megapayer-text placeholder-megapayer-muted"
                     autoFocus
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPin(!showPin)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 text-megapayer-muted hover:text-megapayer-text transition-colors duration-200"
                   >
-                    {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? <CustomIcons.EyeOff className="h-5 w-5" /> : <CustomIcons.Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
 
               {error && (
                 <motion.div
-                  className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg"
+                  className="flex items-center gap-3 p-4 megapayer-panel-soft border border-red-400/30 rounded-xl"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                  <p className="text-red-800 text-sm">{error}</p>
+                  <CustomIcons.AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                  <p className="text-red-600 text-sm font-medium">{error}</p>
                 </motion.div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                  className="flex-1 px-4 py-3 megapayer-panel-soft text-megapayer-muted rounded-xl hover:bg-megapayer-panel transition-all duration-200 font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading || pin.length < 4}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                  disabled={isLoading || !password.trim()}
+                  className="flex-1 megapayer-btn-primary py-3 px-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold"
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center gap-2">
@@ -152,19 +162,19 @@ export const PinProtection: React.FC<PinProtectionProps> = ({
                       Verifying...
                     </div>
                   ) : (
-                    'Verify PIN'
+                    'Verify Password'
                   )}
                 </button>
               </div>
             </form>
 
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="mt-6 p-4 megapayer-panel-soft border border-megapayer-teal/20 rounded-xl relative z-10">
               <div className="flex items-start gap-3">
-                <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
+                <CustomIcons.Shield className="h-5 w-5 text-megapayer-teal mt-0.5 flex-shrink-0" />
                 <div>
-                  <h3 className="font-medium text-blue-800 text-sm">Security Notice</h3>
-                  <p className="text-blue-700 text-xs mt-1">
-                    Your PIN is required to access sensitive information. This helps protect your wallet from unauthorized access.
+                  <h3 className="font-semibold text-megapayer-text text-sm">Security Notice</h3>
+                  <p className="text-megapayer-muted text-xs mt-1">
+                    Your wallet password is required to access sensitive information. This is the same password you use to unlock your wallet.
                   </p>
                 </div>
               </div>

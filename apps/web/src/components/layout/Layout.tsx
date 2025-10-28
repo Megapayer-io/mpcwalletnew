@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { useWalletStore } from '@/store/wallet';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,14 +12,10 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, title, subtitle }) => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
+  const { sidebarCollapsed, toggleSidebar } = useWalletStore();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 flex">
+    <div className="min-h-screen flex">
       {/* Sidebar */}
       <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
       

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
 import { SetupLayout } from '@/components/layout/SetupLayout';
 import { SeedBackup } from '@/components/SeedBackup';
-import { Wallet, Plus, Download, AlertCircle, Shield, Eye, EyeOff } from 'lucide-react';
+import { CustomIcons } from '@/components/icons/CustomIcons';
 
 export default function SetupPage() {
   const router = useRouter();
@@ -15,24 +15,80 @@ export default function SetupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [importMnemonic, setImportMnemonic] = useState('');
   const [isImportMode, setIsImportMode] = useState(false);
+  const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   
-  const { createWallet, importWallet, isInitialized, hasWallet } = useWalletStore();
+  const { createWallet, importWallet, isInitialized, hasWallet, saveKeystore } = useWalletStore();
+
+  // Password validation function
+  const validatePassword = (pwd: string): string[] => {
+    const errors: string[] = [];
+    
+    if (pwd.length < 12) {
+      errors.push('At least 12 characters long');
+    }
+    
+    if (!/[A-Z]/.test(pwd)) {
+      errors.push('At least one uppercase letter');
+    }
+    
+    if (!/[a-z]/.test(pwd)) {
+      errors.push('At least one lowercase letter');
+    }
+    
+    if (!/\d/.test(pwd)) {
+      errors.push('At least one number');
+    }
+    
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd)) {
+      errors.push('At least one special character');
+    }
+    
+    // Check for common patterns
+    if (/(.)\1{2,}/.test(pwd)) {
+      errors.push('No repeated characters (e.g., "aaa")');
+    }
+    
+    if (/123|abc|qwe|asd|zxc/i.test(pwd)) {
+      errors.push('No sequential patterns (e.g., "123", "abc")');
+    }
+    
+    // Check for common words
+    const commonWords = ['password', '123456', 'qwerty', 'admin', 'letmein', 'welcome', 'monkey', 'dragon', 'master', 'hello'];
+    if (commonWords.some(word => pwd.toLowerCase().includes(word))) {
+      errors.push('No common words');
+    }
+    
+    return errors;
+  };
+
+  // Handle password change with validation
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    const errors = validatePassword(value);
+    setPasswordErrors(errors);
+  };
 
   useEffect(() => {
-    if (isInitialized && hasWallet) {
+    // Only redirect if we're not in the middle of setup process AND not creating wallet
+    if (isInitialized && hasWallet && step === 'choose' && !isCreatingWallet) {
       router.push('/');
     }
-  }, [isInitialized, hasWallet, router]);
+  }, [isInitialized, hasWallet, step, isCreatingWallet, router]);
 
   const handleCreateWallet = async () => {
+    setIsCreatingWallet(true);
     try {
       const result = await createWallet();
       setMnemonic(result.mnemonic);
       setStep('backup');
     } catch (error) {
       console.error('Failed to create wallet:', error);
+      alert('Failed to create wallet. Please try again.');
+    } finally {
+      setIsCreatingWallet(false);
     }
   };
 
@@ -63,23 +119,28 @@ export default function SetupPage() {
       return;
     }
 
-    if (password.length < 8) {
-      alert('Password must be at least 8 characters long');
+    // Check if password meets all requirements
+    const errors = validatePassword(password);
+    if (errors.length > 0) {
+      alert(`Password requirements not met:\n${errors.join('\n')}`);
       return;
     }
 
     try {
-      // In a real implementation, you would encrypt the wallet with the password
-      // For now, we'll just redirect to the dashboard
+      // Save the keystore with the password
+      await saveKeystore(mnemonic, password);
+      
+      // Now redirect to dashboard
       router.push('/');
     } catch (error) {
       console.error('Failed to set password:', error);
+      alert('Failed to save wallet. Please try again.');
     }
   };
 
   if (step === 'backup') {
     return (
-      <SetupLayout title="Backup Your Wallet" subtitle="Save your seed phrase securely">
+      <SetupLayout title="Backup Your Wallet" subtitle="Your seed phrase is the master key to your wallet. Write it down carefully and store it safely.">
         <SeedBackup mnemonic={mnemonic} onComplete={handleBackupComplete} />
       </SetupLayout>
     );
@@ -89,20 +150,20 @@ export default function SetupPage() {
     return (
       <SetupLayout title="Set Password" subtitle="Create a strong password to secure your wallet">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="megapayer-panel rounded-2xl shadow-megapayer border border-megapayer-border p-8">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-blue-600" />
+              <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal to-megapayer-violet rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <CustomIcons.Shield className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Set Password</h2>
-              <p className="text-gray-600">
+              <h2 className="text-3xl font-bold text-megapayer-text mb-3 font-heading">Set Password</h2>
+              <p className="text-megapayer-muted text-lg">
                 Create a strong password to encrypt your wallet. This password will be required to unlock your wallet.
               </p>
             </div>
             
             <form onSubmit={handlePasswordSubmit} className="space-y-6">
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-megapayer-text mb-3">
                   Password
                 </label>
                 <div className="relative">
@@ -110,23 +171,27 @@ export default function SetupPage() {
                     type={showPassword ? 'text' : 'password'}
                     id="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={(e) => handlePasswordChange(e.target.value)}
+                    className={`w-full px-4 py-4 pr-12 megapayer-panel-soft border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-megapayer-text placeholder-megapayer-muted transition-all duration-200 ${
+                      passwordErrors.length > 0 && password.length > 0 
+                        ? 'border-red-400 focus:ring-red-400' 
+                        : 'border-megapayer-border'
+                    }`}
                     placeholder="Enter your password"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-megapayer-muted hover:text-megapayer-text transition-colors duration-200"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <CustomIcons.EyeOff className="w-5 h-5" /> : <CustomIcons.Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-megapayer-text mb-3">
                   Confirm Password
                 </label>
                 <div className="relative">
@@ -135,30 +200,82 @@ export default function SetupPage() {
                     id="confirmPassword"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-4 pr-12 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-megapayer-text placeholder-megapayer-muted transition-all duration-200"
                     placeholder="Confirm your password"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-megapayer-muted hover:text-megapayer-text transition-colors duration-200"
                   >
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showConfirmPassword ? <CustomIcons.EyeOff className="w-5 h-5" /> : <CustomIcons.Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start space-x-2">
-                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="megapayer-panel-soft border border-megapayer-teal/20 rounded-xl p-6">
+                <div className="flex items-start space-x-3">
+                  <CustomIcons.AlertTriangle className="w-6 h-6 text-megapayer-teal mt-0.5 flex-shrink-0" />
                   <div>
-                    <h3 className="text-sm font-medium text-blue-800 mb-1">Password Requirements</h3>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                      <li>• At least 8 characters long</li>
-                      <li>• Mix of uppercase and lowercase letters</li>
-                      <li>• Include numbers and special characters</li>
-                      <li>• Don't use common words or personal information</li>
+                    <h3 className="text-sm font-semibold text-megapayer-text mb-3">Password Requirements</h3>
+                    <ul className="text-sm space-y-2">
+                      <li className={`flex items-center space-x-2 ${
+                        password.length >= 12 ? 'text-megapayer-emerald' : 'text-megapayer-muted'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          password.length >= 12 ? 'bg-megapayer-emerald' : 'bg-megapayer-muted'
+                        }`}></div>
+                        <span>At least 12 characters long</span>
+                      </li>
+                      <li className={`flex items-center space-x-2 ${
+                        /[A-Z]/.test(password) ? 'text-megapayer-emerald' : 'text-megapayer-muted'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          /[A-Z]/.test(password) ? 'bg-megapayer-emerald' : 'bg-megapayer-muted'
+                        }`}></div>
+                        <span>At least one uppercase letter</span>
+                      </li>
+                      <li className={`flex items-center space-x-2 ${
+                        /[a-z]/.test(password) ? 'text-megapayer-emerald' : 'text-megapayer-muted'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          /[a-z]/.test(password) ? 'bg-megapayer-emerald' : 'bg-megapayer-muted'
+                        }`}></div>
+                        <span>At least one lowercase letter</span>
+                      </li>
+                      <li className={`flex items-center space-x-2 ${
+                        /\d/.test(password) ? 'text-megapayer-emerald' : 'text-megapayer-muted'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          /\d/.test(password) ? 'bg-megapayer-emerald' : 'bg-megapayer-muted'
+                        }`}></div>
+                        <span>At least one number</span>
+                      </li>
+                      <li className={`flex items-center space-x-2 ${
+                        /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) ? 'text-megapayer-emerald' : 'text-megapayer-muted'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) ? 'bg-megapayer-emerald' : 'bg-megapayer-muted'
+                        }`}></div>
+                        <span>At least one special character</span>
+                      </li>
+                      <li className={`flex items-center space-x-2 ${
+                        !/(.)\1{2,}/.test(password) && password.length > 0 ? 'text-megapayer-emerald' : 'text-megapayer-muted'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          !/(.)\1{2,}/.test(password) && password.length > 0 ? 'bg-megapayer-emerald' : 'bg-megapayer-muted'
+                        }`}></div>
+                        <span>No repeated characters</span>
+                      </li>
+                      <li className={`flex items-center space-x-2 ${
+                        !/123|abc|qwe|asd|zxc/i.test(password) && password.length > 0 ? 'text-megapayer-emerald' : 'text-megapayer-muted'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          !/123|abc|qwe|asd|zxc/i.test(password) && password.length > 0 ? 'bg-megapayer-emerald' : 'bg-megapayer-muted'
+                        }`}></div>
+                        <span>No sequential patterns</span>
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -166,7 +283,8 @@ export default function SetupPage() {
 
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium"
+                disabled={passwordErrors.length > 0 || password !== confirmPassword || password.length === 0}
+                className="w-full megapayer-btn-primary py-4 px-6 rounded-xl text-lg font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 Complete Setup
               </button>
@@ -178,67 +296,132 @@ export default function SetupPage() {
   }
 
   return (
-    <SetupLayout title="Welcome to MPC Wallet" subtitle="Create a new wallet or import an existing one">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <SetupLayout title="Welcome to Megapayer" subtitle="Create a new wallet or import an existing one">
+      {/* Hero Section */}
+      <div className="text-center mb-12">
+        <div className="w-32 h-32 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl animate-float">
+          <CustomIcons.Wallet className="w-16 h-16 text-white" />
+        </div>
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-4xl font-bold text-megapayer-text mb-6 font-heading">Your Gateway to Web3</h2>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 max-w-6xl mx-auto">
         {/* Create New Wallet */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Plus className="w-8 h-8 text-green-600" />
+        <div className="megapayer-panel rounded-3xl shadow-megapayer border border-megapayer-border p-10 hover:shadow-2xl transition-all duration-300 hover:scale-[1.03] group relative overflow-hidden">
+          {/* Background gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-megapayer-emerald/10 to-megapayer-teal/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
+          <div className="text-center relative z-10">
+            <div className="w-20 h-20 bg-gradient-to-br from-megapayer-emerald to-megapayer-teal rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+              <CustomIcons.Plus className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Create New Wallet</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="text-3xl font-bold text-megapayer-text mb-4 font-heading">Create New Wallet</h2>
+            <p className="text-megapayer-muted text-lg mb-8 leading-relaxed">
               Generate a new wallet with a unique seed phrase. Make sure to backup your seed phrase securely.
             </p>
+            
+            {/* Features list */}
+            <div className="text-left mb-8 space-y-3">
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-gradient-to-r from-megapayer-emerald to-megapayer-teal rounded-full"></div>
+                <span className="text-sm text-megapayer-muted">Generate unique 24-word seed phrase</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-gradient-to-r from-megapayer-emerald to-megapayer-teal rounded-full"></div>
+                <span className="text-sm text-megapayer-muted">Full control over your private keys</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-gradient-to-r from-megapayer-emerald to-megapayer-teal rounded-full"></div>
+                <span className="text-sm text-megapayer-muted">Multi-network support</span>
+              </div>
+            </div>
+            
             <button
               onClick={handleCreateWallet}
-              className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
+              disabled={isCreatingWallet}
+              className="w-full megapayer-btn-primary py-4 px-6 rounded-xl text-lg font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg group-hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
-              Create New Wallet
+              {isCreatingWallet ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Creating Wallet...</span>
+                </>
+              ) : (
+                <>
+                  <CustomIcons.Plus className="w-5 h-5" />
+                  <span>Create New Wallet</span>
+                </>
+              )}
             </button>
           </div>
         </div>
 
         {/* Import Existing Wallet */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Download className="w-8 h-8 text-blue-600" />
+        <div className="megapayer-panel rounded-3xl shadow-megapayer border border-megapayer-border p-10 hover:shadow-2xl transition-all duration-300 hover:scale-[1.03] group relative overflow-hidden">
+          {/* Background gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-megapayer-violet/10 to-megapayer-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
+          <div className="text-center relative z-10">
+            <div className="w-20 h-20 bg-gradient-to-br from-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+              <CustomIcons.Download className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Import Existing Wallet</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="text-3xl font-bold text-megapayer-text mb-4 font-heading">Import Existing Wallet</h2>
+            <p className="text-megapayer-muted text-lg mb-8 leading-relaxed">
               Import your existing wallet using your 12 or 24-word seed phrase.
             </p>
+            
+            {/* Features list */}
+            <div className="text-left mb-8 space-y-3">
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-gradient-to-r from-megapayer-violet to-megapayer-accent rounded-full"></div>
+                <span className="text-sm text-megapayer-muted">Support for 12 or 24-word phrases</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-gradient-to-r from-megapayer-violet to-megapayer-accent rounded-full"></div>
+                <span className="text-sm text-megapayer-muted">Restore from any compatible wallet</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-gradient-to-r from-megapayer-violet to-megapayer-accent rounded-full"></div>
+                <span className="text-sm text-megapayer-muted">Keep your existing addresses</span>
+              </div>
+            </div>
             
             {!isImportMode ? (
               <button
                 onClick={() => setIsImportMode(true)}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="w-full megapayer-btn-primary py-4 px-6 rounded-xl text-lg font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg group-hover:shadow-xl"
               >
                 Import Wallet
               </button>
             ) : (
-              <div className="space-y-4">
-                <textarea
-                  value={importMnemonic}
-                  onChange={(e) => setImportMnemonic(e.target.value)}
-                  placeholder="Enter your seed phrase (12 or 24 words)"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  rows={3}
-                />
-                <div className="flex space-x-3">
+              <div className="space-y-6">
+                <div className="text-left">
+                  <label className="block text-sm font-semibold text-megapayer-text mb-3">
+                    Seed Phrase
+                  </label>
+                  <textarea
+                    value={importMnemonic}
+                    onChange={(e) => setImportMnemonic(e.target.value)}
+                    placeholder="Enter your seed phrase (12 or 24 words separated by spaces)"
+                    className="w-full px-4 py-4 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-violet focus:border-transparent resize-none text-megapayer-text placeholder-megapayer-muted transition-all duration-200"
+                    rows={4}
+                  />
+                </div>
+                <div className="flex space-x-4">
                   <button
                     onClick={() => {
                       setIsImportMode(false);
                       setImportMnemonic('');
                     }}
-                    className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="flex-1 megapayer-panel-soft text-megapayer-muted py-3 px-4 rounded-xl hover:bg-megapayer-panel transition-all duration-200 font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleImportWallet}
-                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex-1 megapayer-btn-primary py-3 px-4 rounded-xl font-medium transition-all duration-200 hover:scale-[1.02]"
                   >
                     Import
                   </button>
@@ -250,21 +433,45 @@ export default function SetupPage() {
       </div>
 
       {/* Security Notice */}
-      <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-        <div className="flex items-start space-x-3">
-          <AlertCircle className="w-6 h-6 text-yellow-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <h3 className="text-lg font-semibold text-yellow-800 mb-2">Security Notice</h3>
-            <div className="text-yellow-700 text-sm space-y-2">
-              <p>
-                <strong>Never share your seed phrase:</strong> Anyone with access to your seed phrase can control your wallet and steal your funds.
-              </p>
-              <p>
-                <strong>Store it securely:</strong> Write it down on paper and store it in a safe place. Never store it digitally or share it online.
-              </p>
-              <p>
-                <strong>Verify your backup:</strong> Make sure you can restore your wallet using your seed phrase before deleting any backups.
-              </p>
+      <div className="mt-20 max-w-5xl mx-auto">
+        <div className="megapayer-panel-soft border border-megapayer-border rounded-3xl p-10 shadow-megapayer relative overflow-hidden">
+          {/* Background pattern */}
+          <div className="absolute inset-0 opacity-5">
+            <div className="absolute top-4 left-4 w-8 h-8 border-2 border-megapayer-teal rounded-full"></div>
+            <div className="absolute top-8 right-8 w-6 h-6 border-2 border-megapayer-violet rounded-full"></div>
+            <div className="absolute bottom-6 left-8 w-4 h-4 border-2 border-megapayer-accent rounded-full"></div>
+            <div className="absolute bottom-4 right-4 w-10 h-10 border-2 border-megapayer-emerald rounded-full"></div>
+          </div>
+          
+          <div className="flex items-start space-x-4 relative z-10">
+            <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+              <CustomIcons.AlertTriangle className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-megapayer-text mb-4 font-heading">Security Notice</h3>
+              <div className="text-megapayer-muted space-y-4">
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-gradient-to-r from-megapayer-teal to-megapayer-violet rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="font-semibold text-megapayer-text">Never share your seed phrase:</p>
+                    <p>Anyone with access to your seed phrase can control your wallet and steal your funds.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-gradient-to-r from-megapayer-teal to-megapayer-violet rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="font-semibold text-megapayer-text">Store it securely:</p>
+                    <p>Write it down on paper and store it in a safe place. Never store it digitally or share it online.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-gradient-to-r from-megapayer-teal to-megapayer-violet rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="font-semibold text-megapayer-text">Verify your backup:</p>
+                    <p>Make sure you can restore your wallet using your seed phrase before deleting any backups.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

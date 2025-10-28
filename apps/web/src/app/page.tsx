@@ -4,36 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
 import { Layout } from '@/components/layout/Layout';
-import { 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Globe, 
-  Image, 
-  History, 
-  TrendingUp,
-  Shield,
-  Wallet,
-  Activity,
-  Eye,
-  EyeOff,
-  Copy,
-  RefreshCw,
-  ExternalLink,
-  Send,
-  Zap,
-  Star,
-  Sparkles,
-  Plus,
-  DollarSign,
-  TrendingDown,
-  BarChart3,
-  PieChart,
-  CreditCard,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  Info
-} from 'lucide-react';
+import { CustomIcons } from '@/components/icons/CustomIcons';
+import { generateFallbackIcon, getTokenIcon } from '@/lib/tokenIconService';
+import { cleanupDuplicateTokens } from '@/lib/cleanupDuplicates';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -46,6 +19,7 @@ export default function Dashboard() {
   const [portfolioValue, setPortfolioValue] = useState<string>('0.00');
   const [portfolioChange, setPortfolioChange] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [nativeTokenLogo, setNativeTokenLogo] = useState<string | null>(null);
   
   const {
     isInitialized,
@@ -57,7 +31,10 @@ export default function Dashboard() {
     getBalance,
     getUsdBalance,
     isLoading,
-    error
+    error,
+    transactions,
+    fetchTransactions,
+    isLoadingTransactions
   } = useWalletStore();
 
   useEffect(() => {
@@ -75,14 +52,129 @@ export default function Dashboard() {
   useEffect(() => {
     if (isUnlocked && address) {
       getBalance();
+      fetchTransactions(); // Load recent activity
+      cleanupDuplicateTokens(); // Clean up duplicates first
       loadCustomTokens();
+      
+      // Automatically fetch logos for tokens
+      const fetchLogos = async () => {
+        const tokens = customTokens.filter(token => !token.logoUrl);
+        if (tokens.length > 0) {
+          console.log(`🔄 Auto-fetching logos for ${tokens.length} tokens in dashboard...`);
+          
+          for (const token of tokens) {
+            try {
+              const iconResult = await getTokenIcon(token.symbol, token.address);
+              if (iconResult.url) {
+                console.log(`✅ Found logo for ${token.symbol} in dashboard`);
+                // Update the token in the list
+                setCustomTokens(prevTokens => 
+                  prevTokens.map(t => 
+                    t.symbol === token.symbol && t.address === token.address 
+                      ? { ...t, logoUrl: iconResult.url }
+                      : t
+                  )
+                );
+              }
+            } catch (error) {
+              console.log(`❌ No logo found for ${token.symbol} in dashboard`);
+            }
+          }
+        }
+      };
+      
+      // Run logo fetching after a short delay
+      const timeoutId = setTimeout(fetchLogos, 1000);
+      return () => clearTimeout(timeoutId);
     }
-  }, [isUnlocked, address, getBalance]);
+  }, [isUnlocked, address, getBalance, customTokens.length, currentNetwork?.chainId]);
+
+  // Reload transactions when network changes
+  useEffect(() => {
+    if (isUnlocked && address && currentNetwork?.chainId) {
+      console.log(`🔄 Network changed to ${currentNetwork.name} (${currentNetwork.chainId}), reloading transactions...`);
+      fetchTransactions();
+    }
+  }, [currentNetwork?.chainId, isUnlocked, address, fetchTransactions]);
+
+  // Fetch native token logo
+  useEffect(() => {
+    const fetchNativeTokenLogo = async () => {
+      if (currentNetwork?.symbol) {
+        try {
+          console.log(`🔄 Fetching logo for native token: ${currentNetwork.symbol}`);
+          const iconResult = await getTokenIcon(currentNetwork.symbol, '');
+          if (iconResult.url) {
+            console.log(`✅ Found logo for native token ${currentNetwork.symbol}: ${iconResult.url}`);
+            setNativeTokenLogo(iconResult.url);
+          } else {
+            console.log(`❌ No logo found for native token ${currentNetwork.symbol}`);
+          }
+        } catch (error) {
+          console.log(`❌ Error fetching logo for native token ${currentNetwork.symbol}:`, error);
+        }
+      }
+    };
+
+    fetchNativeTokenLogo();
+  }, [currentNetwork?.symbol]);
 
   const loadCustomTokens = () => {
-    const storedTokens = localStorage.getItem('mpc-wallet-tokens');
-    if (storedTokens) {
-      setCustomTokens(JSON.parse(storedTokens));
+    if (!currentNetwork?.chainId) {
+      setCustomTokens([]);
+      return;
+    }
+    
+    // Migrate old tokens to network-specific storage
+    const oldTokenKey = 'mpc-wallet-tokens';
+    const networkKey = `mpc-wallet-tokens-${currentNetwork.chainId}`;
+    
+    const oldTokens = localStorage.getItem(oldTokenKey);
+    const existingNewTokens = localStorage.getItem(networkKey);
+    
+    if (oldTokens && !existingNewTokens) {
+      console.log(`🔄 Migrating tokens to network-specific storage for network ${currentNetwork.chainId}`);
+      localStorage.setItem(networkKey, oldTokens);
+      console.log(`✅ Migrated tokens to ${networkKey}`);
+    }
+    
+    // Load tokens specific to current network
+    const storedTokens = localStorage.getItem(networkKey);
+    let tokens = storedTokens ? JSON.parse(storedTokens) : [];
+    
+    // Clear tokens when switching networks
+    setCustomTokens(tokens);
+  };
+
+  const addNativeToken = async () => {
+    if (!currentNetwork?.symbol) return;
+    
+    const nativeToken: any = {
+      address: '',
+      symbol: currentNetwork.symbol,
+      name: currentNetwork.name,
+      decimals: 18,
+      logoUrl: undefined
+    };
+    
+    // Get logo for native token
+    try {
+      const iconResult = await getTokenIcon(nativeToken.symbol, nativeToken.address);
+      if (iconResult.url) {
+        nativeToken.logoUrl = iconResult.url;
+      }
+    } catch (error) {
+      console.log('No logo found for native token');
+    }
+    
+    // Add to tokens
+    const updatedTokens = [nativeToken, ...customTokens];
+    setCustomTokens(updatedTokens);
+    
+    // Save to network-specific storage
+    if (currentNetwork?.chainId) {
+      const networkKey = `mpc-wallet-tokens-${currentNetwork.chainId}`;
+      localStorage.setItem(networkKey, JSON.stringify(updatedTokens));
     }
   };
 
@@ -146,8 +238,8 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
         <div className="text-center animate-fade-in">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float">
-            <Wallet className="w-10 h-10 text-white" />
+          <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float">
+            <CustomIcons.Wallet className="w-10 h-10 text-white" />
           </div>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 font-semibold">Initializing wallet...</p>
@@ -162,45 +254,45 @@ export default function Dashboard() {
       title: 'Send Funds',
       description: 'Transfer tokens to any address',
       href: '/send',
-      icon: ArrowUpRight,
-      color: 'from-red-500 to-pink-500',
-      bgColor: 'bg-gradient-to-br from-red-50 to-pink-50',
-      hoverColor: 'hover:from-red-100 hover:to-pink-100',
-      textColor: 'text-red-700',
-      iconColor: 'text-red-600'
+      icon: CustomIcons.Send,
+      color: 'from-megapayer-accent to-megapayer-violet',
+      bgColor: 'bg-gradient-to-br from-megapayer-accent/10 to-megapayer-violet/10',
+      hoverColor: 'hover:from-megapayer-accent/20 hover:to-megapayer-violet/20',
+      textColor: 'text-megapayer-text',
+      iconColor: 'text-megapayer-accent'
     },
     {
       title: 'Receive Funds',
       description: 'Get your wallet address',
       href: '/receive',
-      icon: ArrowDownLeft,
-      color: 'from-green-500 to-emerald-500',
-      bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50',
-      hoverColor: 'hover:from-green-100 hover:to-emerald-100',
-      textColor: 'text-green-700',
-      iconColor: 'text-green-600'
+      icon: CustomIcons.Download,
+      color: 'from-megapayer-emerald to-megapayer-teal',
+      bgColor: 'bg-gradient-to-br from-megapayer-emerald/10 to-megapayer-teal/10',
+      hoverColor: 'hover:from-megapayer-emerald/20 hover:to-megapayer-teal/20',
+      textColor: 'text-megapayer-text',
+      iconColor: 'text-megapayer-emerald'
     },
     {
-      title: 'DApp Browser',
-      description: 'Explore Web3 applications',
-      href: '/browser',
-      icon: Globe,
-      color: 'from-purple-500 to-indigo-500',
-      bgColor: 'bg-gradient-to-br from-purple-50 to-indigo-50',
-      hoverColor: 'hover:from-purple-100 hover:to-indigo-100',
-      textColor: 'text-purple-700',
-      iconColor: 'text-purple-600'
+      title: 'Networks',
+      description: 'Manage blockchain networks',
+      href: '/networks',
+      icon: CustomIcons.Globe,
+      color: 'from-megapayer-violet to-megapayer-teal',
+      bgColor: 'bg-gradient-to-br from-megapayer-violet/10 to-megapayer-teal/10',
+      hoverColor: 'hover:from-megapayer-violet/20 hover:to-megapayer-teal/20',
+      textColor: 'text-megapayer-text',
+      iconColor: 'text-megapayer-violet'
     },
     {
       title: 'View NFTs',
       description: 'Manage your NFT collection',
       href: '/nfts',
-      icon: Image,
-      color: 'from-pink-500 to-rose-500',
-      bgColor: 'bg-gradient-to-br from-pink-50 to-rose-50',
-      hoverColor: 'hover:from-pink-100 hover:to-rose-100',
-      textColor: 'text-pink-700',
-      iconColor: 'text-pink-600'
+      icon: CustomIcons.Image,
+      color: 'from-megapayer-accent to-megapayer-emerald',
+      bgColor: 'bg-gradient-to-br from-megapayer-accent/10 to-megapayer-emerald/10',
+      hoverColor: 'hover:from-megapayer-accent/20 hover:to-megapayer-emerald/20',
+      textColor: 'text-megapayer-text',
+      iconColor: 'text-megapayer-accent'
     }
   ];
 
@@ -210,47 +302,53 @@ export default function Dashboard() {
       value: showBalance ? (balance ? parseFloat(balance).toFixed(4) : '0.0000') : '••••••',
       subtitle: currentNetwork?.symbol || 'ETH',
       usdValue: showBalance ? (usdBalance !== 'Price unavailable' ? `≈ $${usdBalance}` : 'Price unavailable') : '••••••',
-      icon: Wallet,
-      color: 'text-blue-600',
-      bgColor: 'bg-gradient-to-br from-blue-50 to-blue-100',
-      gradient: 'from-blue-500 to-blue-600'
+      icon: CustomIcons.Wallet,
+      color: 'text-megapayer-teal',
+      bgColor: 'bg-gradient-to-br from-megapayer-teal/10 to-megapayer-teal/20',
+      gradient: 'from-megapayer-teal to-megapayer-teal'
     },
     {
       title: 'Network',
       value: currentNetwork?.name || 'Not Connected',
       subtitle: 'Active Network',
-      icon: Activity,
-      color: 'text-green-600',
-      bgColor: 'bg-gradient-to-br from-green-50 to-green-100',
-      gradient: 'from-green-500 to-green-600'
+      icon: CustomIcons.Globe,
+      color: 'text-megapayer-emerald',
+      bgColor: 'bg-gradient-to-br from-megapayer-emerald/10 to-megapayer-emerald/20',
+      gradient: 'from-megapayer-emerald to-megapayer-emerald'
     },
     {
       title: 'Security',
       value: isUnlocked ? 'Unlocked' : 'Locked',
       subtitle: 'Wallet Status',
-      icon: Shield,
-      color: isUnlocked ? 'text-green-600' : 'text-red-600',
-      bgColor: isUnlocked ? 'bg-gradient-to-br from-green-50 to-green-100' : 'bg-gradient-to-br from-red-50 to-red-100',
-      gradient: isUnlocked ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'
+      icon: CustomIcons.Shield,
+      color: isUnlocked ? 'text-megapayer-emerald' : 'text-megapayer-accent',
+      bgColor: isUnlocked ? 'bg-gradient-to-br from-megapayer-emerald/10 to-megapayer-emerald/20' : 'bg-gradient-to-br from-megapayer-accent/10 to-megapayer-accent/20',
+      gradient: isUnlocked ? 'from-megapayer-emerald to-megapayer-emerald' : 'from-megapayer-accent to-megapayer-accent'
     }
   ];
 
         return (
-          <Layout title="Dashboard" subtitle="Professional Web3 Portfolio Management">
+          <Layout title="Dashboard">
             <div className="space-y-8">
               {/* Welcome Header */}
-              <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white relative overflow-hidden">
-                <div className="absolute inset-0 bg-black/10"></div>
+              <div className="megapayer-panel p-8 text-megapayer-text relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-megapayer-teal/10 via-megapayer-violet/10 to-megapayer-accent/10"></div>
                 <div className="relative z-10">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
-                      <p className="text-blue-100 text-lg">Your Web3 portfolio overview</p>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <img src="/megapayer-logo.svg" alt="Megapayer logo" className="w-12 h-12" />
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-megapayer-emerald rounded-full border-2 border-megapayer-panel animate-pulse"></div>
+                      </div>
+                      <div>
+                        <h1 className="text-3xl font-bold mb-2 font-heading text-megapayer-text">Welcome back!</h1>
+                        <p className="text-megapayer-muted text-lg">Your Web3 portfolio overview</p>
+                      </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-blue-100 text-sm mb-1">Portfolio Value</p>
+                      <p className="text-megapayer-muted text-sm mb-1">Portfolio Value</p>
                       <p 
-                        className="text-4xl font-bold cursor-pointer hover:scale-105 transition-transform duration-200"
+                        className="text-4xl font-bold cursor-pointer hover:scale-105 transition-transform duration-200 text-megapayer-text"
                         onClick={handleRefreshBalance}
                         title="Click to refresh portfolio value"
                       >
@@ -258,19 +356,19 @@ export default function Dashboard() {
                       </p>
                       <div className="flex items-center justify-end gap-1 mt-1">
                         {portfolioChange > 0 ? (
-                          <TrendingUp className="w-4 h-4 text-green-300" />
+                          <CustomIcons.TrendingUp className="w-4 h-4 text-megapayer-emerald" />
                         ) : (
-                          <TrendingDown className="w-4 h-4 text-red-300" />
+                          <CustomIcons.TrendingDown className="w-4 h-4 text-megapayer-accent" />
                         )}
-                        <span className={`text-sm font-medium ${portfolioChange > 0 ? 'text-green-300' : 'text-red-300'}`}>
+                        <span className={`text-sm font-medium ${portfolioChange > 0 ? 'text-megapayer-emerald' : 'text-megapayer-accent'}`}>
                           {showBalance ? `${portfolioChange > 0 ? '+' : ''}${portfolioChange}%` : '••••'}
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full"></div>
-                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/5 rounded-full"></div>
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-megapayer-teal/10 rounded-full"></div>
+                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-megapayer-violet/5 rounded-full"></div>
               </div>
 
               {/* Main Stats Grid */}
@@ -281,7 +379,7 @@ export default function Dashboard() {
                     value: showBalance ? (balance ? parseFloat(balance).toFixed(4) : '0.0000') : '••••••',
                     subtitle: currentNetwork?.symbol || 'ETH',
                     usdValue: showBalance ? (usdBalance !== 'Price unavailable' ? `≈ $${usdBalance}` : 'Price unavailable') : '••••••',
-                    icon: Wallet,
+                    icon: CustomIcons.Wallet,
                     color: 'from-blue-500 to-blue-600',
                     bgColor: 'from-blue-50 to-blue-100',
                     iconColor: 'text-blue-600',
@@ -291,7 +389,7 @@ export default function Dashboard() {
                     title: 'Active Network',
                     value: currentNetwork?.name || 'Not Connected',
                     subtitle: `Chain ID: ${currentNetwork?.chainId || 'N/A'}`,
-                    icon: Activity,
+                    icon: CustomIcons.Globe,
                     color: 'from-green-500 to-green-600',
                     bgColor: 'from-green-50 to-green-100',
                     iconColor: 'text-green-600',
@@ -301,7 +399,7 @@ export default function Dashboard() {
                     title: 'Security Status',
                     value: isUnlocked ? 'Secured' : 'Locked',
                     subtitle: isUnlocked ? 'Wallet Unlocked' : 'Wallet Locked',
-                    icon: Shield,
+                    icon: CustomIcons.Shield,
                     color: isUnlocked ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600',
                     bgColor: isUnlocked ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100',
                     iconColor: isUnlocked ? 'text-green-600' : 'text-red-600',
@@ -311,7 +409,7 @@ export default function Dashboard() {
                     title: 'Custom Tokens',
                     value: customTokens.length.toString(),
                     subtitle: 'ERC-20 Tokens',
-                    icon: Star,
+                    icon: CustomIcons.Star,
                     color: 'from-purple-500 to-purple-600',
                     bgColor: 'from-purple-50 to-purple-100',
                     iconColor: 'text-purple-600',
@@ -340,27 +438,27 @@ export default function Dashboard() {
                     <div 
                       key={index} 
                       onClick={handleCardClick}
-                      className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-6 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 animate-fade-in-up group cursor-pointer"
+                      className="megapayer-panel p-6 hover:shadow-megapayer transition-all duration-300 hover:-translate-y-1 animate-fade-in-up group cursor-pointer"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className={`w-12 h-12 bg-gradient-to-br ${stat.bgColor} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                           <Icon className={`w-6 h-6 ${stat.iconColor}`} />
                         </div>
-                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                        <span className="text-xs font-medium text-megapayer-muted bg-megapayer-panel-soft px-2 py-1 rounded-full">
                           {stat.change}
                         </span>
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-500 mb-1">{stat.title}</p>
-                        <p className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</p>
-                        <p className="text-sm text-gray-600">{stat.subtitle}</p>
+                        <p className="text-sm font-semibold text-megapayer-muted mb-1">{stat.title}</p>
+                        <p className="text-2xl font-bold text-megapayer-text mb-1">{stat.value}</p>
+                        <p className="text-sm text-megapayer-muted">{stat.subtitle}</p>
                         {stat.usdValue && (
-                          <p className="text-sm text-gray-500 mt-1">{stat.usdValue}</p>
+                          <p className="text-sm text-megapayer-muted mt-1">{stat.usdValue}</p>
                         )}
                       </div>
                       <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <p className="text-xs text-blue-600 font-medium">
+                        <p className="text-xs text-megapayer-teal font-medium">
                           {index === 0 ? 'Click to refresh' : 
                            index === 1 ? 'Click to manage networks' :
                            index === 2 ? 'Click to manage account' :
@@ -373,40 +471,40 @@ export default function Dashboard() {
               </div>
 
               {/* Action Bar */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-6 animate-fade-in-up">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 megapayer-panel p-6 animate-fade-in-up">
                 <div className="flex items-center gap-4">
                   <button
                     onClick={handleRefreshBalance}
                     disabled={isRefreshing}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all duration-300 hover:scale-105"
+                    className="flex items-center gap-2 px-4 py-2 megapayer-btn-primary rounded-xl disabled:opacity-50 transition-all duration-300 hover:scale-105"
                   >
-                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <CustomIcons.Refresh className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} spinning={isRefreshing} />
                     <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
                   <button
                     onClick={() => setShowBalance(!showBalance)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300 hover:scale-105"
+                    className="flex items-center gap-2 px-4 py-2 megapayer-btn-primary rounded-xl transition-all duration-300 hover:scale-105 group"
                   >
-                    {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    <span className="font-medium">{showBalance ? 'Hide' : 'Show'} Balance</span>
+                    {showBalance ? <CustomIcons.EyeOff className="w-4 h-4 group-hover:scale-110 transition-transform" /> : <CustomIcons.Eye className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                    <span className="font-semibold">{showBalance ? 'Hide' : 'Show'} Balance</span>
                   </button>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Clock className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-sm text-megapayer-muted">
+                  <CustomIcons.Clock className="w-4 h-4" />
                   <span>Last updated: {new Date().toLocaleTimeString()}</span>
                 </div>
               </div>
 
               {/* Quick Actions */}
-              <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 animate-fade-in-up">
+              <div className="megapayer-panel p-8 animate-fade-in-up">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <Zap className="w-6 h-6 text-white" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-megapayer-teal to-megapayer-violet rounded-2xl flex items-center justify-center shadow-lg">
+                      <CustomIcons.Zap className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-gray-900">Quick Actions</h3>
-                      <p className="text-gray-600">Access your most used features</p>
+                      <h3 className="text-2xl font-bold text-megapayer-text font-heading">Quick Actions</h3>
+                      <p className="text-megapayer-muted">Access your most used features</p>
                     </div>
                   </div>
                 </div>
@@ -424,7 +522,7 @@ export default function Dashboard() {
                           <div className={`w-12 h-12 ${action.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
                             <Icon className={`w-6 h-6 ${action.iconColor}`} />
                           </div>
-                          <ArrowUpRight className={`w-5 h-5 ${action.iconColor} opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1`} />
+                          <CustomIcons.ArrowUpRight className={`w-5 h-5 ${action.iconColor} opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1`} />
                         </div>
                         <h4 className={`font-bold ${action.textColor} mb-2 text-lg`}>{action.title}</h4>
                         <p className="text-sm text-gray-600 font-medium">{action.description}</p>
@@ -435,22 +533,22 @@ export default function Dashboard() {
               </div>
 
               {/* Portfolio Section */}
-              <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 animate-fade-in-up">
+              <div className="megapayer-panel p-8 animate-fade-in-up">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <PieChart className="w-6 h-6 text-white" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-megapayer-emerald to-megapayer-teal rounded-2xl flex items-center justify-center shadow-lg">
+                      <CustomIcons.PieChart className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-gray-900">Portfolio</h3>
-                      <p className="text-gray-600">Your token holdings and balances</p>
+                      <h3 className="text-2xl font-bold text-megapayer-text font-heading">Portfolio</h3>
+                      <p className="text-megapayer-muted">Your token holdings and balances</p>
                     </div>
                   </div>
                   <Link
                     href="/tokens"
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg"
+                    className="flex items-center gap-2 px-6 py-3 megapayer-btn-primary rounded-xl hover:scale-105 shadow-lg"
                   >
-                    <Plus className="w-5 h-5" />
+                    <CustomIcons.Plus className="w-5 h-5" />
                     <span className="font-semibold">Add Token</span>
                   </Link>
                 </div>
@@ -459,8 +557,22 @@ export default function Dashboard() {
                   {/* Native Token */}
                   <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200/50 hover:shadow-lg transition-all duration-300">
                     <div className="flex items-center space-x-4">
-                      <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                        {currentNetwork?.symbol?.charAt(0) || 'E'}
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg">
+                        {nativeTokenLogo ? (
+                          <img
+                            src={nativeTokenLogo}
+                            alt={`${currentNetwork?.symbol} logo`}
+                            className="w-14 h-14 rounded-2xl"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = generateFallbackIcon(currentNetwork?.symbol || 'ETH', 56);
+                            }}
+                          />
+                        ) : (
+                          <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg">
+                            {currentNetwork?.symbol?.charAt(0) || 'E'}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <h4 className="font-bold text-gray-900 text-lg">{currentNetwork?.symbol || 'ETH'}</h4>
@@ -477,13 +589,28 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Custom Tokens */}
                   {customTokens.length > 0 ? (
                     customTokens.map((token, index) => (
                       <div key={token.address} className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-all duration-300 hover:shadow-lg">
                         <div className="flex items-center space-x-4">
-                          <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                            {token.symbol.charAt(0)}
+                          <div className="relative">
+                            {token.logoUrl ? (
+                              <img
+                                src={token.logoUrl}
+                                alt={`${token.symbol} logo`}
+                                className="w-14 h-14 rounded-2xl shadow-lg"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = generateFallbackIcon(token.symbol, 56);
+                                }}
+                              />
+                            ) : (
+                              <img
+                                src={generateFallbackIcon(token.symbol, 56)}
+                                alt={`${token.symbol} generated icon`}
+                                className="w-14 h-14 rounded-2xl shadow-lg"
+                              />
+                            )}
                           </div>
                           <div>
                             <h4 className="font-bold text-gray-900 text-lg">{token.symbol}</h4>
@@ -499,7 +626,7 @@ export default function Dashboard() {
                   ) : (
                     <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-300">
                       <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                        <Zap className="w-10 h-10 text-gray-400" />
+                        <CustomIcons.Zap className="w-10 h-10 text-gray-400" />
                       </div>
                       <h4 className="text-xl font-bold text-gray-900 mb-3">No Custom Tokens</h4>
                       <p className="text-gray-600 mb-6 max-w-md mx-auto">Add custom tokens to track your complete portfolio and get a comprehensive view of your holdings.</p>
@@ -507,7 +634,7 @@ export default function Dashboard() {
                         href="/tokens"
                         className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
                       >
-                        <Plus className="w-5 h-5 mr-2" />
+                        <CustomIcons.Plus className="w-5 h-5 mr-2" />
                         Add Your First Token
                       </Link>
                     </div>
@@ -519,11 +646,11 @@ export default function Dashboard() {
               <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 animate-fade-in-up">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-gray-500 to-gray-600 rounded-2xl flex items-center justify-center shadow-lg">
-                      <Wallet className="w-6 h-6 text-white" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-megapayer-violet to-megapayer-teal rounded-2xl flex items-center justify-center shadow-lg">
+                      <CustomIcons.Wallet className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-gray-900">Wallet Information</h3>
+                      <h3 className="text-2xl font-bold text-gray-900 font-heading">Wallet Information</h3>
                       <p className="text-gray-600">Your wallet details and network status</p>
                     </div>
                   </div>
@@ -550,9 +677,9 @@ export default function Dashboard() {
                             title="Copy address"
                           >
                             {copied ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
+                              <CustomIcons.CheckCircle className="h-4 w-4 text-green-500" />
                             ) : (
-                              <Copy className="h-4 w-4" />
+                              <CustomIcons.Copy className="h-4 w-4" />
                             )}
                           </button>
                         )}
@@ -581,7 +708,7 @@ export default function Dashboard() {
                       </label>
                       <div className="flex items-center gap-3">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isUnlocked ? 'bg-green-100' : 'bg-red-100'}`}>
-                          <Shield className={`w-6 h-6 ${isUnlocked ? 'text-green-600' : 'text-red-600'}`} />
+                          <CustomIcons.Shield className={`w-6 h-6 ${isUnlocked ? 'text-green-600' : 'text-red-600'}`} />
                         </div>
                         <div>
                           <p className="font-semibold text-gray-900">{isUnlocked ? 'Wallet Secured' : 'Wallet Locked'}</p>
@@ -601,7 +728,7 @@ export default function Dashboard() {
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-all duration-300 font-medium"
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          <CustomIcons.ExternalLink className="h-4 w-4" />
                           <span>View on Explorer</span>
                         </a>
                       </div>
@@ -612,7 +739,7 @@ export default function Dashboard() {
                 {error && (
                   <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-red-600" />
+                      <CustomIcons.AlertTriangle className="h-5 w-5 text-red-600" />
                       <p className="text-sm text-red-600 font-medium">{error}</p>
                     </div>
                   </div>
@@ -623,11 +750,11 @@ export default function Dashboard() {
               <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 animate-fade-in-up">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <BarChart3 className="w-6 h-6 text-white" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center shadow-lg">
+                      <CustomIcons.BarChart className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-gray-900">Recent Activity</h3>
+                      <h3 className="text-2xl font-bold text-gray-900 font-heading">Recent Activity</h3>
                       <p className="text-gray-600">Your latest transactions and interactions</p>
                     </div>
                   </div>
@@ -636,35 +763,82 @@ export default function Dashboard() {
                     className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-700 transition-colors duration-300 font-semibold"
                   >
                     <span>View All</span>
-                    <ArrowUpRight className="h-4 w-4" />
+                    <CustomIcons.ArrowUpRight className="h-4 w-4" />
                   </Link>
                 </div>
                 
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <History className="w-10 h-10 text-gray-400" />
+                {isLoadingTransactions ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-megapayer-teal mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading recent activity...</p>
                   </div>
-                  <h4 className="text-xl font-bold text-gray-900 mb-3">No Recent Activity</h4>
-                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    Your transaction history and activity will appear here once you start using your wallet.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link
-                      href="/send"
-                      className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
-                    >
-                      <Send className="w-5 h-5 mr-2" />
-                      Send Transaction
-                    </Link>
-                    <Link
-                      href="/receive"
-                      className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
-                    >
-                      <ArrowDownLeft className="w-5 h-5 mr-2" />
-                      Receive Funds
-                    </Link>
+                ) : transactions && transactions.length > 0 ? (
+                  <div className="space-y-4">
+                    {transactions.slice(0, 5).map((tx, index) => (
+                      <div key={tx.hash} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-300">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            tx.type === 'send' ? 'bg-red-100' : 
+                            tx.type === 'receive' ? 'bg-green-100' : 
+                            'bg-blue-100'
+                          }`}>
+                            {tx.type === 'send' ? (
+                              <CustomIcons.Send className="w-5 h-5 text-red-600" />
+                            ) : tx.type === 'receive' ? (
+                              <CustomIcons.ArrowDownLeft className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <CustomIcons.BarChart className="w-5 h-5 text-blue-600" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 capitalize">{tx.type}</p>
+                            <p className="text-sm text-gray-600">
+                              {tx.tokenSymbol ? `${tx.tokenSymbol}` : `${parseFloat(tx.value).toFixed(4)} ${currentNetwork?.symbol || 'ETH'}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">
+                            {new Date(tx.timestamp * 1000).toLocaleDateString()}
+                          </p>
+                          <p className={`text-xs font-medium ${
+                            tx.status === 'success' ? 'text-green-600' :
+                            tx.status === 'pending' ? 'text-yellow-600' :
+                            'text-red-600'
+                          }`}>
+                            {tx.status}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                      <CustomIcons.History className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <h4 className="text-xl font-bold text-gray-900 mb-3">No Recent Activity</h4>
+                    <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                      Your transaction history and activity will appear here once you start using your wallet.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                      <Link
+                        href="/send"
+                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
+                      >
+                        <CustomIcons.Send className="w-5 h-5 mr-2" />
+                        Send Transaction
+                      </Link>
+                      <Link
+                        href="/receive"
+                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
+                      >
+                        <CustomIcons.ArrowDownLeft className="w-5 h-5 mr-2" />
+                        Receive Funds
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </Layout>

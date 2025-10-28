@@ -1,0 +1,34 @@
+{
+  "name": "@evm-wallet/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@scure/bip32": "^2.0.1",
+    "@types/qrcode": "^1.5.5",
+    "bip39": "^3.1.0",
+    "qrcode": "^1.5.4",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/bip39": "^3.0.0",
+    "eslint": "^8",
+    "jsdom": "^24.0.0",
+    "typescript": "^5",
+    "vitest": "^1.6.0"
+  }
+}

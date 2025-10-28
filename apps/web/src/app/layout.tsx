@@ -1,13 +1,24 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Sora } from 'next/font/google';
 import { Providers } from '@/lib/providers';
+import { MobileWarning } from '@/components/MobileWarning';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  variable: '--font-inter'
+});
+
+const sora = Sora({ 
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800'],
+  variable: '--font-sora'
+});
 
 export const metadata: Metadata = {
-  title: 'MPC Wallet',
-  description: 'A minimal MPC wallet built with Next.js and wagmi',
+  title: 'Megapayer',
+  description: 'Privacy-Centric Smart Wallet - Professional Web3 Portfolio Management',
 };
 
 export default function RootLayout({
@@ -17,12 +28,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${sora.variable} font-sans megapayer-bg`}>
         <Providers>
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen">
             {children}
           </div>
         </Providers>
+        <MobileWarning />
       </body>
     </html>
   );

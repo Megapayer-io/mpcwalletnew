@@ -1,356 +1,195 @@
-import { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, dialog, shell } from 'electron'
-import { join } from 'path'
-import { isDev } from './utils'
+import { app, BrowserWindow, Menu, shell, ipcMain, dialog } from 'electron';
+import * as path from 'path';
+import { isDev } from './utils.js';
 
-class DesktopApp {
-  private mainWindow: BrowserWindow | null = null
-  private tray: Tray | null = null
-  private isQuitting = false
+// Keep a global reference of the window object
+let mainWindow: BrowserWindow | null = null;
 
-  constructor() {
-    this.initializeApp()
+const createWindow = (): void => {
+  // Create the browser window
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+    titleBarStyle: 'hiddenInset',
+    show: false,
+    icon: path.join(__dirname, '../public/megapayer-logo.svg'),
+  });
+
+  // Load the app
+  if (isDev) {
+    // In development, load from Next.js dev server
+    mainWindow.loadURL('http://localhost:3001');
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../out/index.html'));
   }
 
-  private initializeApp() {
-    // Handle app ready
-    app.whenReady().then(() => {
-      this.createMainWindow()
-      this.createTray()
-      this.createMenu()
-      this.setupIPC()
-    })
+  // Show window when ready to prevent visual flash
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show();
+  });
 
-    // Handle window closed
-    app.on('window-all-closed', () => {
-      if (process.platform !== 'darwin') {
-        app.quit()
-      }
-    })
+  // Handle window closed
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 
-    // Handle app activate (macOS)
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        this.createMainWindow()
-      }
-    })
+  // Handle external links
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
 
-    // Handle before quit
-    app.on('before-quit', () => {
-      this.isQuitting = true
-    })
-  }
+  // Security: Prevent new window creation
+  mainWindow.webContents.on('new-window', (event, navigationUrl) => {
+    event.preventDefault();
+    shell.openExternal(navigationUrl);
+  });
+};
 
-  private createMainWindow() {
-    this.mainWindow = new BrowserWindow({
-      width: 1200,
-      height: 800,
-      minWidth: 1000,
-      minHeight: 700,
-      show: false,
-      frame: false, // Custom title bar
-      titleBarStyle: 'hidden',
-      titleBarOverlay: {
-        color: '#ffffff',
-        symbolColor: '#333333',
-        height: 40
-      },
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        enableRemoteModule: false,
-        preload: join(__dirname, 'preload.js'),
-        webSecurity: !isDev
-      },
-      icon: join(__dirname, '../assets/icon.png'),
-      backgroundColor: '#f8fafc'
-    })
+// App event listeners
+app.whenReady().then(() => {
+  createWindow();
+  createMenu();
 
-    // Load the app
-    if (isDev) {
-      this.mainWindow.loadURL('http://localhost:3001')
-      this.mainWindow.webContents.openDevTools()
-    } else {
-      this.mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
     }
+  });
+});
 
-    // Show window when ready
-    this.mainWindow.once('ready-to-show', () => {
-      this.mainWindow?.show()
-      
-      // Focus on the window
-      if (isDev) {
-        this.mainWindow?.webContents.openDevTools()
-      }
-    })
-
-    // Handle window closed
-    this.mainWindow.on('close', (event) => {
-      if (!this.isQuitting) {
-        event.preventDefault()
-        this.mainWindow?.hide()
-      }
-    })
-
-    // Handle external links
-    this.mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-      shell.openExternal(url)
-      return { action: 'deny' }
-    })
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
   }
+});
 
-  private createTray() {
-    const iconPath = join(__dirname, '../assets/tray-icon.png')
-    const icon = nativeImage.createFromPath(iconPath)
+// Create application menu
+const createMenu = (): void => {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Wallet',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => {
+            mainWindow?.webContents.send('menu-new-wallet');
+          },
+        },
+        {
+          label: 'Import Wallet',
+          accelerator: 'CmdOrCtrl+I',
+          click: () => {
+            mainWindow?.webContents.send('menu-import-wallet');
+          },
+        },
+        { type: 'separator' },
+        {
+          label: 'Quit',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
+          click: () => {
+            app.quit();
+          },
+        },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'close' },
+      ],
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About Megapayer',
+          click: () => {
+            dialog.showMessageBox(mainWindow!, {
+              type: 'info',
+              title: 'About Megapayer Desktop',
+              message: 'Megapayer Desktop Wallet',
+              detail: 'Version 1.0.0\nSecure Multi-Chain Crypto Wallet',
+            });
+          },
+        },
+        {
+          label: 'Learn More',
+          click: () => {
+            shell.openExternal('https://megapayerwalletwhitepaper.vercel.app/');
+          },
+        },
+      ],
+    },
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+};
+
+// IPC handlers for secure communication
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
+ipcMain.handle('show-save-dialog', async (event, options) => {
+  const result = await dialog.showSaveDialog(mainWindow!, options);
+  return result;
+});
+
+ipcMain.handle('show-open-dialog', async (event, options) => {
+  const result = await dialog.showOpenDialog(mainWindow!, options);
+  return result;
+});
+
+ipcMain.handle('show-message-box', async (event, options) => {
+  const result = await dialog.showMessageBox(mainWindow!, options);
+  return result;
+});
+
+// Security: Prevent navigation to external URLs
+app.on('web-contents-created', (event, contents) => {
+  contents.on('will-navigate', (event, navigationUrl) => {
+    const parsedUrl = new URL(navigationUrl);
     
-    this.tray = new Tray(icon)
-    
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Show MPC Wallet',
-        click: () => {
-          this.mainWindow?.show()
-          this.mainWindow?.focus()
-        }
-      },
-      {
-        label: 'Dashboard',
-        click: () => {
-          this.mainWindow?.show()
-          this.mainWindow?.focus()
-          this.mainWindow?.webContents.send('navigate-to', '/')
-        }
-      },
-      {
-        label: 'Send',
-        click: () => {
-          this.mainWindow?.show()
-          this.mainWindow?.focus()
-          this.mainWindow?.webContents.send('navigate-to', '/send')
-        }
-      },
-      {
-        label: 'Receive',
-        click: () => {
-          this.mainWindow?.show()
-          this.mainWindow?.focus()
-          this.mainWindow?.webContents.send('navigate-to', '/receive')
-        }
-      },
-      { type: 'separator' },
-      {
-        label: 'Quit',
-        click: () => {
-          this.isQuitting = true
-          app.quit()
-        }
-      }
-    ])
-
-    this.tray.setContextMenu(contextMenu)
-    this.tray.setToolTip('MPC Wallet - Professional Web3 Desktop Wallet')
-    
-    // Double click to show window
-    this.tray.on('double-click', () => {
-      this.mainWindow?.show()
-      this.mainWindow?.focus()
-    })
-  }
-
-  private createMenu() {
-    const template: Electron.MenuItemConstructorOptions[] = [
-      {
-        label: 'File',
-        submenu: [
-          {
-            label: 'New Wallet',
-            accelerator: 'CmdOrCtrl+N',
-            click: () => {
-              this.mainWindow?.webContents.send('menu-action', 'new-wallet')
-            }
-          },
-          {
-            label: 'Import Wallet',
-            accelerator: 'CmdOrCtrl+I',
-            click: () => {
-              this.mainWindow?.webContents.send('menu-action', 'import-wallet')
-            }
-          },
-          { type: 'separator' },
-          {
-            label: 'Export Wallet',
-            accelerator: 'CmdOrCtrl+E',
-            click: () => {
-              this.mainWindow?.webContents.send('menu-action', 'export-wallet')
-            }
-          },
-          { type: 'separator' },
-          {
-            label: 'Quit',
-            accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
-            click: () => {
-              this.isQuitting = true
-              app.quit()
-            }
-          }
-        ]
-      },
-      {
-        label: 'Edit',
-        submenu: [
-          { role: 'undo' },
-          { role: 'redo' },
-          { type: 'separator' },
-          { role: 'cut' },
-          { role: 'copy' },
-          { role: 'paste' },
-          { role: 'selectall' }
-        ]
-      },
-      {
-        label: 'View',
-        submenu: [
-          { role: 'reload' },
-          { role: 'forceReload' },
-          { role: 'toggleDevTools' },
-          { type: 'separator' },
-          { role: 'resetZoom' },
-          { role: 'zoomIn' },
-          { role: 'zoomOut' },
-          { type: 'separator' },
-          { role: 'togglefullscreen' }
-        ]
-      },
-      {
-        label: 'Wallet',
-        submenu: [
-          {
-            label: 'Dashboard',
-            accelerator: 'CmdOrCtrl+1',
-            click: () => {
-              this.mainWindow?.webContents.send('navigate-to', '/')
-            }
-          },
-          {
-            label: 'Send',
-            accelerator: 'CmdOrCtrl+2',
-            click: () => {
-              this.mainWindow?.webContents.send('navigate-to', '/send')
-            }
-          },
-          {
-            label: 'Receive',
-            accelerator: 'CmdOrCtrl+3',
-            click: () => {
-              this.mainWindow?.webContents.send('navigate-to', '/receive')
-            }
-          },
-          {
-            label: 'History',
-            accelerator: 'CmdOrCtrl+4',
-            click: () => {
-              this.mainWindow?.webContents.send('navigate-to', '/history')
-            }
-          },
-          { type: 'separator' },
-          {
-            label: 'Account Management',
-            accelerator: 'CmdOrCtrl+A',
-            click: () => {
-              this.mainWindow?.webContents.send('navigate-to', '/account')
-            }
-          },
-          {
-            label: 'Settings',
-            accelerator: 'CmdOrCtrl+,',
-            click: () => {
-              this.mainWindow?.webContents.send('navigate-to', '/settings')
-            }
-          }
-        ]
-      },
-      {
-        label: 'Window',
-        submenu: [
-          { role: 'minimize' },
-          { role: 'close' }
-        ]
-      },
-      {
-        label: 'Help',
-        submenu: [
-          {
-            label: 'About MPC Wallet',
-            click: () => {
-              this.mainWindow?.webContents.send('menu-action', 'about')
-            }
-          },
-          {
-            label: 'Documentation',
-            click: () => {
-              shell.openExternal('https://docs.mpcwallet.com')
-            }
-          },
-          {
-            label: 'Support',
-            click: () => {
-              shell.openExternal('https://support.mpcwallet.com')
-            }
-          }
-        ]
-      }
-    ]
-
-    const menu = Menu.buildFromTemplate(template)
-    Menu.setApplicationMenu(menu)
-  }
-
-  private setupIPC() {
-    // Handle file operations
-    ipcMain.handle('show-open-dialog', async (event, options) => {
-      const result = await dialog.showOpenDialog(this.mainWindow!, options)
-      return result
-    })
-
-    ipcMain.handle('show-save-dialog', async (event, options) => {
-      const result = await dialog.showSaveDialog(this.mainWindow!, options)
-      return result
-    })
-
-    // Handle notifications
-    ipcMain.handle('show-notification', async (event, options) => {
-      if (process.platform === 'win32') {
-        // Windows notification
-        new Notification(options.title, {
-          body: options.body,
-          icon: join(__dirname, '../assets/icon.png')
-        })
-      }
-      return true
-    })
-
-    // Handle window controls
-    ipcMain.handle('window-minimize', () => {
-      this.mainWindow?.minimize()
-    })
-
-    ipcMain.handle('window-maximize', () => {
-      if (this.mainWindow?.isMaximized()) {
-        this.mainWindow.unmaximize()
-      } else {
-        this.mainWindow?.maximize()
-      }
-    })
-
-    ipcMain.handle('window-close', () => {
-      this.mainWindow?.close()
-    })
-
-    // Handle app info
-    ipcMain.handle('get-app-version', () => {
-      return app.getVersion()
-    })
-  }
-}
-
-// Initialize the app
-new DesktopApp()
+    if (parsedUrl.origin !== 'http://localhost:3001' && !isDev) {
+      event.preventDefault();
+    }
+  });
+});

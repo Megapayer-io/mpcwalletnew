@@ -1,0 +1,331 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.6);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.6s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.6s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.5s ease-out forwards;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, #2563eb, #7c3aed);
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Hover effects */
+.hover-lift {
+  transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+:root {
+  /* Megapayer Color Scheme */
+  --bg: #0B0B0F;
+  --panel: #10131e;
+  --panel-soft: #0f1220;
+  --text: #e7ecf5;
+  --muted: #9aa4b5;
+  --teal: #22E1FF;
+  --violet: #7C3AED;
+  --emerald: #34D399;
+  --accent: #FF7A45;
+  --border: rgba(255,255,255,0.12);
+  --border-soft: rgba(255,255,255,0.08);
+  --shadow: 0 18px 60px rgba(0,0,0,0.45);
+  
+  /* Legacy variables for compatibility */
+  --background: var(--bg);
+  --foreground: var(--text);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --panel: #f8fafc;
+    --panel-soft: #f1f5f9;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: rgba(0,0,0,0.12);
+    --border-soft: rgba(0,0,0,0.08);
+    --shadow: 0 18px 60px rgba(0,0,0,0.15);
+  }
+}
+
+body {
+  color: var(--text);
+  background: radial-gradient(1200px 600px at 70% 20%, rgba(34,225,255,0.10), transparent 60%),
+             radial-gradient(900px 500px at 20% 80%, rgba(124,58,237,0.10), transparent 60%),
+             var(--bg);
+  font-family: var(--font-inter), Inter, system-ui, Arial, Helvetica, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .font-heading {
+    font-family: var(--font-sora), Sora, system-ui, Arial, Helvetica, sans-serif;
+  }
+  
+  .font-body {
+    font-family: var(--font-inter), Inter, system-ui, Arial, Helvetica, sans-serif;
+  }
+  
+  /* Megapayer Design System */
+  .megapayer-bg {
+    background: var(--bg);
+  }
+  
+  .megapayer-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+  }
+  
+  .megapayer-panel-soft {
+    background: var(--panel-soft);
+    border: 1px solid var(--border-soft);
+    border-radius: 16px;
+  }
+  
+  .megapayer-text {
+    color: var(--text);
+  }
+  
+  .megapayer-muted {
+    color: var(--muted);
+  }
+  
+  .megapayer-teal {
+    color: var(--teal);
+  }
+  
+  .megapayer-violet {
+    color: var(--violet);
+  }
+  
+  .megapayer-emerald {
+    color: var(--emerald);
+  }
+  
+  .megapayer-accent {
+    color: var(--accent);
+  }
+  
+  .megapayer-btn {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    text-decoration: none;
+    color: var(--text);
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+  }
+  
+  .megapayer-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  }
+  
+  .megapayer-btn-primary {
+    background: linear-gradient(135deg, var(--teal), #4fd1ff 40%, #8ab6ff);
+    color: #001018;
+    border: 0;
+    font-weight: 800;
+  }
+  
+  .megapayer-btn-primary:hover {
+    filter: brightness(1.05);
+  }
+  
+  .megapayer-chip {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: #bfefff;
+    border: 1px solid rgba(34,225,255,0.35);
+    background: rgba(34,225,255,0.10);
+    margin: 4px 6px 0 0;
+  }
+  
+  .megapayer-chip-accent {
+    color: #ffd6c6;
+    border-color: rgba(255,122,69,0.35);
+    background: rgba(255,122,69,0.10);
+  }
+  
+  .megapayer-badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    background: rgba(34,225,255,0.12);
+    border: 1px solid rgba(34,225,255,0.25);
+    color: #bfefff;
+  }
+  
+  .megapayer-badge-alt {
+    background: rgba(124,58,237,0.12);
+    border-color: rgba(124,58,237,0.25);
+    color: #d9c6ff;
+  }
+}

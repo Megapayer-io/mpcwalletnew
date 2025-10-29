@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPC Wallet Settings</title>
+    <style>
+        body {
+            width: 800px;
+            height: 600px;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f9fafb;
+        }
+        
+        .header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 16px;
+            text-align: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+        
+        .logo-text h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: bold;
+            color: #111827;
+        }
+        
+        .logo-text p {
+            margin: 0;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .main-content {
+            padding: 24px;
+        }
+        
+        .settings-section {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .settings-section h3 {
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+        }
+        
+        .settings-section p {
+            margin: 0 0 16px 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .action-btn {
+            padding: 12px 24px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .action-btn:hover {
+            border-color: #3b82f6;
+            background: #f8fafc;
+        }
+        
+        .danger-btn {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+        
+        .danger-btn:hover {
+            background: #dc2626;
+            border-color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">💳</div>
+            <div class="logo-text">
+                <h1>MPC Wallet</h1>
+                <p>Settings & Configuration</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="settings-section">
+            <h3>Account Management</h3>
+            <p>Manage your wallet accounts and settings</p>
+            <button class="action-btn" id="export-mnemonic-btn">Export Mnemonic</button>
+            <button class="action-btn" id="export-private-key-btn">Export Private Key</button>
+            <button class="action-btn" id="add-account-btn">Add Account</button>
+        </div>
+        
+        <div class="settings-section">
+            <h3>Network Settings</h3>
+            <p>Configure blockchain networks</p>
+            <button class="action-btn" id="add-network-btn">Add Network</button>
+            <button class="action-btn" id="switch-network-btn">Switch Network</button>
+        </div>
+        
+        <div class="settings-section">
+            <h3>Security</h3>
+            <p>Wallet security and backup options</p>
+            <button class="action-btn" id="change-password-btn">Change Password</button>
+            <button class="action-btn" id="backup-wallet-btn">Backup Wallet</button>
+        </div>
+        
+        <div class="settings-section">
+            <h3>Danger Zone</h3>
+            <p>Irreversible actions that cannot be undone</p>
+            <button class="action-btn danger-btn" id="reset-wallet-btn">Reset Wallet</button>
+        </div>
+    </div>
+
+    <script src="wallet-service.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Export mnemonic
+            document.getElementById('export-mnemonic-btn').addEventListener('click', async function() {
+                try {
+                    const result = await window.walletService.exportMnemonic();
+                    if (result.success) {
+                        alert('Mnemonic: ' + result.mnemonic);
+                    } else {
+                        alert('Failed to export mnemonic: ' + result.error);
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            });
+            
+            // Export private key
+            document.getElementById('export-private-key-btn').addEventListener('click', async function() {
+                try {
+                    const result = await window.walletService.exportPrivateKey(window.walletService.getCurrentAccount().address);
+                    if (result.success) {
+                        alert('Private Key: ' + result.privateKey);
+                    } else {
+                        alert('Failed to export private key: ' + result.error);
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            });
+            
+            // Add account
+            document.getElementById('add-account-btn').addEventListener('click', async function() {
+                const accountName = prompt('Enter account name:');
+                if (accountName) {
+                    try {
+                        const result = await window.walletService.createAccount(accountName);
+                        if (result.success) {
+                            alert('Account created successfully!');
+                        } else {
+                            alert('Failed to create account: ' + result.error);
+                        }
+                    } catch (error) {
+                        alert('Error: ' + error.message);
+                    }
+                }
+            });
+            
+            // Add network
+            document.getElementById('add-network-btn').addEventListener('click', function() {
+                alert('Add network functionality coming soon!');
+            });
+            
+            // Switch network
+            document.getElementById('switch-network-btn').addEventListener('click', function() {
+                alert('Switch network functionality coming soon!');
+            });
+            
+            // Change password
+            document.getElementById('change-password-btn').addEventListener('click', function() {
+                alert('Change password functionality coming soon!');
+            });
+            
+            // Backup wallet
+            document.getElementById('backup-wallet-btn').addEventListener('click', function() {
+                alert('Backup wallet functionality coming soon!');
+            });
+            
+            // Reset wallet
+            document.getElementById('reset-wallet-btn').addEventListener('click', function() {
+                if (confirm('Are you sure you want to reset the wallet? This action cannot be undone.')) {
+                    if (confirm('This will permanently delete all wallet data. Are you absolutely sure?')) {
+                        alert('Reset wallet functionality coming soon!');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

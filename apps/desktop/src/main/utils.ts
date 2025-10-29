@@ -1,20 +1,15 @@
-import { app } from 'electron'
-import { join } from 'path'
+import { app } from 'electron';
 
-export const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
+export const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
-export const getAssetPath = (path: string): string => {
-  const RESOURCES_PATH = app.isPackaged
-    ? join(process.resourcesPath, 'assets')
-    : join(__dirname, '../assets')
+export const getAppPath = (): string => {
+  return isDev ? process.cwd() : app.getAppPath();
+};
 
-  return join(RESOURCES_PATH, path)
-}
+export const getUserDataPath = (): string => {
+  return app.getPath('userData');
+};
 
-export const getAppDataPath = (): string => {
-  return app.getPath('userData')
-}
-
-export const getWalletDataPath = (): string => {
-  return join(getAppDataPath(), 'wallet-data')
-}
+export const getLogsPath = (): string => {
+  return app.getPath('logs');
+};

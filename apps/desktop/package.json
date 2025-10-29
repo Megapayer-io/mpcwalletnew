@@ -1,85 +1,68 @@
 {
-  "name": "mpc-wallet-desktop",
+  "name": "megapayer-desktop",
   "version": "1.0.0",
-  "description": "Professional Web3 Desktop Wallet",
+  "description": "Megapayer Desktop Wallet - Secure Multi-Chain Crypto Wallet",
   "main": "dist/main/main.js",
   "homepage": "./",
   "scripts": {
-    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
-    "dev:main": "tsc -p tsconfig.main.json && electron dist/main/main.js --dev",
-    "dev:renderer": "vite",
-    "build": "npm run build:main && npm run build:renderer",
+    "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:main\"",
+    "dev:renderer": "next dev -p 3001",
+    "dev:main": "wait-on http://localhost:3001 && electron .",
+    "build": "npm run build:renderer && npm run build:main",
+    "build:renderer": "next build",
     "build:main": "tsc -p tsconfig.main.json",
-    "build:renderer": "vite build",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac",
-    "dist:linux": "npm run build && electron-builder --linux",
-    "pack": "npm run build && electron-builder --dir",
-    "postinstall": "electron-builder install-app-deps"
-  },
-  "keywords": [
-    "cryptocurrency",
-    "wallet",
-    "web3",
-    "ethereum",
-    "desktop",
-    "electron"
-  ],
-  "author": "MPC Wallet Team",
-  "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "concurrently": "^8.2.0",
-    "electron": "^27.0.0",
-    "electron-builder": "^24.6.0",
-    "typescript": "^5.0.0",
-    "vite": "^4.4.0"
+    "start": "electron .",
+    "pack": "npm run build && electron-builder",
+    "dist": "npm run build && electron-builder --publish=never",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "framer-motion": "^10.16.0",
-    "lucide-react": "^0.290.0",
-    "zustand": "^4.4.0",
-    "qrcode": "^1.5.3",
-    "crypto-js": "^4.1.1",
-    "ethers": "^6.7.0"
+    "@evm-wallet/sdk": "file:./lib/sdk",
+    "@tanstack/react-query": "^5.51.0",
+    "autoprefixer": "^10",
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.400.0",
+    "next": "14.2.5",
+    "postcss": "^8",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwindcss": "^3.4.1",
+    "viem": "^2.21.0",
+    "wagmi": "^2.12.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "concurrently": "^8.2.2",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.5",
+    "typescript": "^5",
+    "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.mpcwallet.desktop",
-    "productName": "MPC Wallet",
+    "appId": "com.megapayer.desktop",
+    "productName": "Megapayer Desktop",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
-      "node_modules/**/*",
-      "package.json"
+      "node_modules/**/*"
     ],
-    "win": {
-      "target": "nsis",
-      "icon": "src/assets/icon.ico",
-      "requestedExecutionLevel": "asInvoker"
-    },
     "mac": {
-      "target": "dmg",
-      "icon": "src/assets/icon.icns",
-      "category": "public.app-category.finance"
+      "category": "public.app-category.finance",
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "src/assets/icon.png",
-      "category": "Office"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "target": "AppImage"
     }
   }
 }

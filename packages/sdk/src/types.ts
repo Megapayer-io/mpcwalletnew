@@ -19,6 +19,7 @@ export interface Account {
   name: string;
   isImported: boolean;
   index?: number; // For derived accounts
+  sourceMnemonic?: string; // For accounts imported from mnemonic
 }
 
 export interface WalletState {

@@ -132,3 +132,13 @@ playwright/.cache/
 # Backup files
 *.backup
 *.bak
+.vercel
+
+# Electron build artifacts
+release/
+*.asar
+*.app
+*.exe
+*.dmg
+*.deb
+*.rpm

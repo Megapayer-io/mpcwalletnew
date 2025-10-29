@@ -5,13 +5,19 @@
   "packageManager": "pnpm@8.15.0",
   "scripts": {
     "dev": "pnpm --filter web dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:desktop": "pnpm --filter megapayer-desktop dev",
+    "dev:all": "concurrently \"pnpm dev:web\" \"pnpm dev:desktop\"",
     "build": "pnpm -r build",
+    "build:desktop": "pnpm --filter megapayer-desktop build",
+    "dist:desktop": "pnpm --filter megapayer-desktop dist",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "concurrently": "^8.2.2",
     "turbo": "^1.13.4",
     "typescript": "^5"
   },

@@ -43,7 +43,7 @@ export default function NftsPage() {
 
   if (error) {
     return (
-        <div className="max-w-2xl mx-auto">
+        <div>
           <div className="megapayer-panel p-6 border border-red-500/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -64,19 +64,19 @@ export default function NftsPage() {
   }
 
   return (
-      <div className="space-y-8">
-        {/* Header Section */}
-        <div className="megapayer-panel p-8 text-megapayer-text relative overflow-hidden">
+      <div className="space-y-4">
+        {/* Header Section - Compact */}
+        <div className="megapayer-panel p-4 text-megapayer-text relative overflow-hidden rounded-xl">
           <div className="absolute inset-0 bg-gradient-to-r from-megapayer-accent/10 via-megapayer-violet/10 to-megapayer-emerald/10"></div>
           <div className="relative z-10">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-megapayer-accent to-megapayer-emerald rounded-2xl flex items-center justify-center shadow-lg">
-                  <CustomIcons.Image className="w-8 h-8 text-white" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-megapayer-accent to-megapayer-emerald rounded-lg flex items-center justify-center shadow-md">
+                  <CustomIcons.Image className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold mb-2 font-heading text-megapayer-text">NFT Collection</h1>
-                  <p className="text-megapayer-muted text-lg">
+                  <h1 className="text-xl font-bold mb-0.5 font-heading text-megapayer-text">NFT Collection</h1>
+                  <p className="text-megapayer-muted text-xs">
                     {nfts.length} NFT{nfts.length !== 1 ? 's' : ''} found on {currentNetwork?.name || 'Unknown Network'}
                   </p>
                 </div>

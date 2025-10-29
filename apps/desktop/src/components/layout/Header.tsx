@@ -46,10 +46,13 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 backdrop-filter backdrop-blur-xl bg-megapayer-panel/95 px-8 h-16 flex items-center">
+    <header className="sticky top-0 z-40 backdrop-filter backdrop-blur-xl bg-megapayer-panel/95 px-6 h-16 border-b border-megapayer-border/50 flex items-center">
       <div className="flex items-center justify-between w-full">
-        {/* Left side - Empty space */}
-        <div></div>
+        {/* Left side - Logo */}
+        <div className="flex items-center gap-2">
+          <img src="/megapayer-logo.svg" alt="Megapayer" className="w-6 h-6" />
+          <span className="text-sm font-bold text-megapayer-text font-heading hidden sm:block">Megapayer</span>
+        </div>
 
         {/* Right side - Actions */}
         <div className="flex items-center space-x-4">

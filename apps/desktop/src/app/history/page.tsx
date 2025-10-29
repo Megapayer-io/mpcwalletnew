@@ -80,7 +80,7 @@ export default function HistoryPage() {
 
   if (!address) {
     return (
-        <div className="max-w-2xl mx-auto">
+        <div>
           <div className="text-center py-12">
             <div className="w-20 h-20 bg-gradient-to-br from-megapayer-violet via-megapayer-teal to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6">
               <CustomIcons.History className="w-10 h-10 text-white" />
@@ -93,23 +93,21 @@ export default function HistoryPage() {
   }
 
   return (
-      <div className="space-y-8">
-        {/* Header Section */}
-        <div className="megapayer-panel p-8 text-megapayer-text relative overflow-hidden">
+      <div className="space-y-4">
+        {/* Header Section - Compact */}
+        <div className="megapayer-panel p-4 text-megapayer-text relative overflow-hidden rounded-xl">
           <div className="absolute inset-0 bg-gradient-to-r from-megapayer-violet/10 via-megapayer-teal/10 to-megapayer-accent/10"></div>
           <div className="relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-megapayer-violet to-megapayer-teal rounded-2xl flex items-center justify-center shadow-lg">
-                <CustomIcons.History className="w-8 h-8 text-white" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-megapayer-violet to-megapayer-teal rounded-lg flex items-center justify-center shadow-md">
+                <CustomIcons.History className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold mb-2 font-heading text-megapayer-text">Transaction History</h1>
-                <p className="text-megapayer-muted text-lg">View all your recent transactions on {currentNetwork?.name || 'Unknown Network'}</p>
+                <h1 className="text-xl font-bold mb-0.5 font-heading text-megapayer-text">Transaction History</h1>
+                <p className="text-megapayer-muted text-xs">View all your recent transactions on {currentNetwork?.name || 'Unknown Network'}</p>
               </div>
             </div>
           </div>
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-megapayer-violet/10 rounded-full"></div>
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-megapayer-teal/5 rounded-full"></div>
         </div>
 
         {/* Controls */}

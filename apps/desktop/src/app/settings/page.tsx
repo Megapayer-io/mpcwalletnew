@@ -140,7 +140,7 @@ export default function SettingsPage() {
 
   if (!isUnlocked) {
     return (
-        <div className="max-w-2xl mx-auto text-center py-12">
+        <div className="text-center py-12">
           <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4 animate-fade-in" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2 animate-fade-in-up">Wallet Locked</h1>
           <p className="text-gray-600 animate-fade-in-up delay-100">

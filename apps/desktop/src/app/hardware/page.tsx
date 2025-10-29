@@ -103,7 +103,7 @@ export default function HardwareWalletPage() {
 
   if (!isUnlocked) {
     return (
-        <div className="max-w-2xl mx-auto text-center py-12">
+        <div className="text-center py-12">
           <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6">
             <CustomIcons.Lock className="w-10 h-10 text-white" />
           </div>
@@ -116,7 +116,7 @@ export default function HardwareWalletPage() {
   }
 
   return (
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="space-y-8">
         {/* Header Section */}
         <div className="megapayer-panel p-8 text-megapayer-text relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-megapayer-accent/10 via-megapayer-violet/10 to-megapayer-teal/10"></div>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { BottomNav } from '@/components/layout/BottomNav';
 import { Header } from '@/components/layout/Header';
 import { MobileWarning } from '@/components/MobileWarning';
 
@@ -17,9 +17,7 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
   const { 
     isInitialized, 
     hasWallet, 
-    isUnlocked, 
-    sidebarCollapsed, 
-    toggleSidebar 
+    isUnlocked
   } = useWalletStore();
 
   const [isElectron, setIsElectron] = useState(false);
@@ -83,7 +81,7 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           <div className="w-20 h-20 bg-gradient-to-r from-megapayer-accent to-megapayer-violet rounded-3xl flex items-center justify-center mx-auto mb-6 animate-pulse">
             <div className="w-10 h-10 bg-white rounded-2xl"></div>
           </div>
-          <h2 className="text-2xl font-bold text-megapayer-text mb-2">Megapayer Desktop</h2>
+          <h2 className="text-2xl font-bold text-megapayer-text mb-2">Megapayer</h2>
           <p className="text-megapayer-text/70">Loading your secure wallet...</p>
           <div className="mt-6 w-48 h-1 bg-megapayer-panel rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-megapayer-accent to-megapayer-violet rounded-full animate-pulse"></div>
@@ -118,33 +116,28 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
       '/settings': { title: 'Settings', subtitle: 'Manage your wallet settings' },
       '/browser': { title: 'DApp Browser', subtitle: 'Explore and interact with Web3 applications' },
     };
-    return titles[pathname] || { title: 'Megapayer Desktop', subtitle: undefined };
+    return titles[pathname] || { title: 'Megapayer', subtitle: undefined };
   };
 
   const pageInfo = getPageTitle();
 
-  // Desktop layout with sidebar and header
+  // Desktop layout with bottom navigation and compact content
   return (
-    <div className="min-h-screen bg-gradient-to-br from-megapayer-accent/20 via-megapayer-violet/10 to-megapayer-teal/20">
-      <div className="flex h-screen">
-        {/* Sidebar */}
-        <div className={`transition-all duration-300 ${sidebarCollapsed ? 'w-16' : 'w-64'}`}>
-          <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Header */}
-          <Header title={pageInfo.title} subtitle={pageInfo.subtitle} />
-          
-          {/* Page Content */}
-          <main className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-7xl mx-auto">
-              {children}
-            </div>
-          </main>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-megapayer-accent/20 via-megapayer-violet/10 to-megapayer-teal/20 pb-28">
+      <div className="flex flex-col h-screen">
+        {/* Header */}
+        <Header title={pageInfo.title} subtitle={pageInfo.subtitle} />
+        
+        {/* Page Content - Compact */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-5xl mx-auto px-6 py-4">
+            {children}
+          </div>
+        </main>
       </div>
+
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 }

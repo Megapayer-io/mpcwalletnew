@@ -277,7 +277,7 @@ export default function TokensPage() {
   // Show loading while redirecting
   if (!isUnlocked) {
     return (
-        <div className="max-w-2xl mx-auto text-center py-12">
+        <div className="text-center py-12">
           <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
             <CustomIcons.Star className="w-10 h-10 text-white" />
           </div>
@@ -291,49 +291,47 @@ export default function TokensPage() {
   }
 
   return (
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header Section */}
-        <div className="megapayer-panel p-8 text-megapayer-text relative overflow-hidden">
+      <div className="space-y-4">
+        {/* Header Section - Compact */}
+        <div className="megapayer-panel p-4 text-megapayer-text relative overflow-hidden rounded-xl">
           <div className="absolute inset-0 bg-gradient-to-r from-megapayer-accent/10 via-megapayer-violet/10 to-megapayer-emerald/10"></div>
           <div className="relative z-10">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-megapayer-accent to-megapayer-emerald rounded-2xl flex items-center justify-center shadow-lg">
-                  <CustomIcons.Star className="w-8 h-8 text-white" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-megapayer-accent to-megapayer-emerald rounded-lg flex items-center justify-center shadow-md">
+                  <CustomIcons.Star className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold mb-2 font-heading text-megapayer-text">Token Management</h1>
-                  <p className="text-megapayer-muted text-lg">Add custom ERC-20 tokens to your wallet</p>
+                  <h1 className="text-xl font-bold mb-0.5 font-heading text-megapayer-text">Token Management</h1>
+                  <p className="text-megapayer-muted text-xs">Add custom ERC-20 tokens to your wallet</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-megapayer-muted text-sm mb-1">Total Tokens</p>
-                <p className="text-4xl font-bold text-megapayer-text">{tokens.length}</p>
-                <div className="flex items-center justify-end gap-1 mt-1">
-                  <div className="w-3 h-3 bg-megapayer-emerald rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-megapayer-emerald">Active</span>
+                <p className="text-megapayer-muted text-xs mb-0.5">Total Tokens</p>
+                <p className="text-2xl font-bold text-megapayer-text">{tokens.length}</p>
+                <div className="flex items-center justify-end gap-1 mt-0.5">
+                  <div className="w-2 h-2 bg-megapayer-emerald rounded-full animate-pulse"></div>
+                  <span className="text-xs font-medium text-megapayer-emerald">Active</span>
                 </div>
                 {logoStats.tokensWithoutLogos > 0 && (
-                  <div className="mt-2 text-xs text-megapayer-muted">
+                  <div className="mt-1 text-xs text-megapayer-muted">
                     {logoStats.tokensWithoutLogos} tokens using fallback icons
                   </div>
                 )}
               </div>
             </div>
           </div>
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-megapayer-accent/10 rounded-full"></div>
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-megapayer-emerald/5 rounded-full"></div>
         </div>
 
         {/* Add Token Form */}
-        <div className="megapayer-panel p-8 animate-fade-in-up">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-xl flex items-center justify-center shadow-lg">
-              <CustomIcons.Plus className="w-6 h-6 text-white" />
+        <div className="megapayer-panel p-4 animate-fade-in-up rounded-xl">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-lg flex items-center justify-center shadow-md">
+              <CustomIcons.Plus className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-megapayer-text font-heading">Add Custom Token</h2>
-              <p className="text-megapayer-muted">Import ERC-20 tokens by contract address</p>
+              <h2 className="text-base font-bold text-megapayer-text font-heading">Add Custom Token</h2>
+              <p className="text-megapayer-muted text-xs">Import ERC-20 tokens by contract address</p>
             </div>
           </div>
           
@@ -367,7 +365,7 @@ export default function TokensPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-accent/20 bg-megapayer-accent/5">
+              <div className="megapayer-panel-soft p-3 rounded-lg border border-megapayer-accent/20 bg-megapayer-accent/5">
                 <div className="flex items-start gap-4">
                   <CustomIcons.AlertTriangle className="h-5 w-5 text-megapayer-accent mt-1 flex-shrink-0" />
                   <div>

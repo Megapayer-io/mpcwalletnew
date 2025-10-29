@@ -298,28 +298,24 @@ export default function AccountPage() {
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* Header Section - Compact */}
-        <div className="megapayer-panel p-4 text-megapayer-text relative overflow-hidden rounded-xl">
+        <div className="megapayer-panel p-2 text-megapayer-text relative overflow-hidden rounded-lg">
           <div className="absolute inset-0 bg-gradient-to-r from-megapayer-violet/10 via-megapayer-teal/10 to-megapayer-emerald/10"></div>
           <div className="relative z-10">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-megapayer-violet to-megapayer-teal rounded-lg flex items-center justify-center shadow-md">
-                  <CustomIcons.User className="w-5 h-5 text-white" />
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-megapayer-violet to-megapayer-teal rounded-lg flex items-center justify-center shadow-md">
+                  <CustomIcons.User className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold mb-0.5 font-heading text-megapayer-text">Account Management</h1>
+                  <h1 className="text-sm font-bold mb-0.5 font-heading text-megapayer-text">Account Management</h1>
                   <p className="text-megapayer-muted text-xs">Manage your wallet account and security settings</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-megapayer-muted text-xs mb-0.5">Total Accounts</p>
-                <p className="text-2xl font-bold text-megapayer-text">{accounts.length}</p>
-                <div className="flex items-center justify-end gap-1 mt-0.5">
-                  <div className="w-2 h-2 bg-megapayer-emerald rounded-full animate-pulse"></div>
-                  <span className="text-xs font-medium text-megapayer-emerald">Active</span>
-                </div>
+                <p className="text-megapayer-muted text-[10px] mb-0.5">Total Accounts</p>
+                <p className="text-base font-bold text-megapayer-text">{accounts.length}</p>
               </div>
             </div>
           </div>

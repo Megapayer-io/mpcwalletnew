@@ -277,86 +277,99 @@ export default function TokensPage() {
   // Show loading while redirecting
   if (!isUnlocked) {
     return (
-        <div className="text-center py-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
-            <CustomIcons.Star className="w-10 h-10 text-white" />
+        <div className="text-center py-6">
+          <div className="relative mx-auto mb-4">
+            {/* Outer glow ring */}
+            <div className="absolute inset-0 w-16 h-16 mx-auto rounded-full bg-gradient-to-r from-megapayer-teal/20 via-megapayer-violet/20 to-megapayer-accent/20 animate-pulse"></div>
+            
+            {/* Animated gradient circle */}
+            <div className="relative w-16 h-16 mx-auto rounded-full bg-gradient-to-r from-megapayer-teal via-megapayer-violet to-megapayer-accent p-0.5 animate-spin" style={{ animationDuration: '2s' }}>
+              <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                <CustomIcons.Star className="w-6 h-6 text-megapayer-teal" />
+              </div>
+            </div>
+            
+            {/* Inner pulsing dot */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-megapayer-teal rounded-full animate-ping"></div>
           </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-megapayer-teal mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-megapayer-text mb-2">Redirecting to unlock page...</h1>
-          <p className="text-megapayer-muted">
+          
+          {/* Loading text with shimmer */}
+          <div className="relative mb-2">
+            <h1 className="text-sm font-bold text-megapayer-text relative z-10">Redirecting to unlock page...</h1>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-megapayer-teal/10 to-transparent animate-pulse"></div>
+          </div>
+          <p className="text-xs text-megapayer-muted">
             Please wait while we redirect you to unlock your wallet.
           </p>
+          
+          {/* Progress dots */}
+          <div className="flex justify-center gap-1.5 mt-3">
+            <div className="w-1.5 h-1.5 bg-megapayer-teal rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+            <div className="w-1.5 h-1.5 bg-megapayer-violet rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-1.5 h-1.5 bg-megapayer-accent rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+          </div>
         </div>
     );
   }
 
   return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* Header Section - Compact */}
-        <div className="megapayer-panel p-4 text-megapayer-text relative overflow-hidden rounded-xl">
+        <div className="megapayer-panel p-2 text-megapayer-text relative overflow-hidden rounded-lg">
           <div className="absolute inset-0 bg-gradient-to-r from-megapayer-accent/10 via-megapayer-violet/10 to-megapayer-emerald/10"></div>
           <div className="relative z-10">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-megapayer-accent to-megapayer-emerald rounded-lg flex items-center justify-center shadow-md">
-                  <CustomIcons.Star className="w-5 h-5 text-white" />
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-megapayer-accent to-megapayer-emerald rounded-lg flex items-center justify-center shadow-md">
+                  <CustomIcons.Star className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold mb-0.5 font-heading text-megapayer-text">Token Management</h1>
+                  <h1 className="text-sm font-bold mb-0.5 font-heading text-megapayer-text">Token Management</h1>
                   <p className="text-megapayer-muted text-xs">Add custom ERC-20 tokens to your wallet</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-megapayer-muted text-xs mb-0.5">Total Tokens</p>
-                <p className="text-2xl font-bold text-megapayer-text">{tokens.length}</p>
-                <div className="flex items-center justify-end gap-1 mt-0.5">
-                  <div className="w-2 h-2 bg-megapayer-emerald rounded-full animate-pulse"></div>
-                  <span className="text-xs font-medium text-megapayer-emerald">Active</span>
-                </div>
-                {logoStats.tokensWithoutLogos > 0 && (
-                  <div className="mt-1 text-xs text-megapayer-muted">
-                    {logoStats.tokensWithoutLogos} tokens using fallback icons
-                  </div>
-                )}
+                <p className="text-megapayer-muted text-[10px] mb-0.5">Total Tokens</p>
+                <p className="text-base font-bold text-megapayer-text">{tokens.length}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Add Token Form */}
-        <div className="megapayer-panel p-4 animate-fade-in-up rounded-xl">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="megapayer-panel p-2 animate-fade-in-up rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-lg flex items-center justify-center shadow-md">
               <CustomIcons.Plus className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-megapayer-text font-heading">Add Custom Token</h2>
+              <h2 className="text-sm font-bold text-megapayer-text font-heading">Add Custom Token</h2>
               <p className="text-megapayer-muted text-xs">Import ERC-20 tokens by contract address</p>
             </div>
           </div>
           
-          <div className="space-y-6">
+          <div className="space-y-2">
             <div>
-              <label className="block text-sm font-semibold text-megapayer-text mb-3">
+              <label className="block text-xs font-semibold text-megapayer-text mb-1">
                 Token Contract Address
               </label>
-              <div className="flex gap-4">
+              <div className="flex gap-2">
                 <input
                   type="text"
                   value={newTokenAddress}
                   onChange={(e) => setNewTokenAddress(e.target.value)}
                   placeholder="0x..."
-                  className="flex-1 px-4 py-3 megapayer-panel-soft border border-megapayer-border-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-megapayer-text"
+                  className="flex-1 px-2 py-1.5 megapayer-panel-soft border border-megapayer-border-soft rounded-lg focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-xs text-megapayer-text"
                 />
                 <button
                   onClick={handleAddToken}
                   disabled={!newTokenAddress.trim() || isAddingToken}
-                  className="px-6 py-3 megapayer-btn-primary rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center gap-2 font-semibold"
+                  className="px-3 py-1.5 megapayer-btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center gap-1.5 font-semibold text-xs"
                 >
                   {isAddingToken ? (
-                    <CustomIcons.Refresh className="h-4 w-4 animate-spin" />
+                    <CustomIcons.Refresh className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <CustomIcons.Plus className="h-4 w-4" />
+                    <CustomIcons.Plus className="h-3.5 w-3.5" />
                   )}
                   {isAddingToken ? 'Adding...' : 'Add Token'}
                 </button>
@@ -365,12 +378,11 @@ export default function TokensPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="megapayer-panel-soft p-3 rounded-lg border border-megapayer-accent/20 bg-megapayer-accent/5">
-                <div className="flex items-start gap-4">
-                  <CustomIcons.AlertTriangle className="h-5 w-5 text-megapayer-accent mt-1 flex-shrink-0" />
+              <div className="megapayer-panel-soft p-2 rounded-lg border border-megapayer-accent/20 bg-megapayer-accent/5">
+                <div className="flex items-start gap-2">
+                  <CustomIcons.AlertTriangle className="h-4 w-4 text-megapayer-accent mt-0.5 flex-shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-megapayer-text mb-2">Error</h3>
-                    <p className="text-sm text-megapayer-muted">{error}</p>
+                    <p className="text-xs text-megapayer-muted">{error}</p>
                   </div>
                 </div>
               </div>
@@ -378,36 +390,23 @@ export default function TokensPage() {
 
             {/* Success Message */}
             {success && (
-              <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-emerald/20 bg-megapayer-emerald/5">
-                <div className="flex items-start gap-4">
-                  <CustomIcons.CheckCircle className="h-5 w-5 text-megapayer-emerald mt-1 flex-shrink-0" />
+              <div className="megapayer-panel-soft p-2 rounded-lg border border-megapayer-emerald/20 bg-megapayer-emerald/5">
+                <div className="flex items-start gap-2">
+                  <CustomIcons.CheckCircle className="h-4 w-4 text-megapayer-emerald mt-0.5 flex-shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-megapayer-text mb-2">Success</h3>
-                    <p className="text-sm text-megapayer-muted">{success}</p>
+                    <p className="text-xs text-megapayer-muted">{success}</p>
                   </div>
                 </div>
               </div>
             )}
             
-            <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-border-soft">
-              <div className="flex items-start gap-4">
-                <CustomIcons.AlertTriangle className="h-5 w-5 text-megapayer-teal mt-1 flex-shrink-0" />
+            <div className="megapayer-panel-soft p-2 rounded-lg border border-megapayer-border-soft">
+              <div className="flex items-start gap-2">
+                <CustomIcons.AlertTriangle className="h-4 w-4 text-megapayer-teal mt-0.5 flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold text-megapayer-text mb-2">How to find token addresses</h3>
-                  <p className="text-sm text-megapayer-muted mb-3">
-                    You can find token contract addresses on block explorers like{' '}
-                    <a
-                      href={currentNetwork?.blockExplorer}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-megapayer-teal hover:text-megapayer-violet underline font-medium"
-                    >
-                      {currentNetwork?.blockExplorer}
-                    </a>
-                    {' '}or token listing websites.
-                  </p>
-                  <p className="text-sm text-megapayer-muted">
-                    Token icons will be automatically fetched when available.
+                  <h3 className="font-semibold text-megapayer-text mb-1 text-xs">How to find token addresses</h3>
+                  <p className="text-xs text-megapayer-muted">
+                    Find token addresses on block explorers or token listing websites. Token icons will be automatically fetched when available.
                   </p>
                 </div>
               </div>
@@ -416,107 +415,106 @@ export default function TokensPage() {
         </div>
 
         {/* Token List */}
-        <div className="megapayer-panel p-8 animate-fade-in-up">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-megapayer-emerald to-megapayer-teal rounded-xl flex items-center justify-center shadow-lg">
-                <CustomIcons.Star className="w-6 h-6 text-white" />
+        <div className="megapayer-panel p-3 animate-fade-in-up">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-megapayer-emerald to-megapayer-teal rounded-lg flex items-center justify-center shadow-md">
+                <CustomIcons.Star className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-megapayer-text font-heading">Your Tokens</h2>
-                <p className="text-megapayer-muted">{tokens.length} custom tokens added</p>
+                <h2 className="text-sm font-bold text-megapayer-text font-heading">Your Tokens</h2>
+                <p className="text-xs text-megapayer-muted">{tokens.length} custom tokens added</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <div className="relative">
-                <CustomIcons.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-megapayer-muted" />
+                <CustomIcons.Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-megapayer-muted" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search tokens..."
-                  className="pl-10 pr-4 py-3 megapayer-panel-soft border border-megapayer-border-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-megapayer-text"
+                  className="pl-8 pr-2 py-1.5 megapayer-panel-soft border border-megapayer-border-soft rounded-lg focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-xs text-megapayer-text"
                 />
               </div>
               <button
                 onClick={loadTokens}
-                className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
+                className="p-1.5 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-lg transition-all duration-300 hover:scale-110"
                 title="Refresh tokens"
               >
-                <CustomIcons.Refresh className="h-4 w-4" />
+                <CustomIcons.Refresh className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
           
           {filteredTokens.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-20 h-20 bg-gradient-to-br from-megapayer-panel-soft to-megapayer-panel rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <CustomIcons.Star className="w-10 h-10 text-megapayer-muted" />
+            <div className="text-center py-6">
+              <div className="w-14 h-14 bg-gradient-to-br from-megapayer-panel-soft to-megapayer-panel rounded-lg flex items-center justify-center mx-auto mb-3">
+                <CustomIcons.Star className="w-7 h-7 text-megapayer-muted" />
               </div>
-              <h3 className="text-xl font-bold text-megapayer-text mb-3 font-heading">No Tokens Found</h3>
-              <p className="text-megapayer-muted mb-6">
+              <h3 className="text-sm font-bold text-megapayer-text mb-2 font-heading">No Tokens Found</h3>
+              <p className="text-xs text-megapayer-muted mb-3">
                 {searchQuery ? 'No tokens match your search.' : 'You haven\'t added any custom tokens yet.'}
               </p>
               {!searchQuery && (
-                <p className="text-sm text-megapayer-muted">
+                <p className="text-xs text-megapayer-muted">
                   Add a token contract address above to get started.
                 </p>
               )}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {filteredTokens.map((token, index) => (
                 <div
                   key={token.address}
-                  className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-border-soft transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-fade-in-up"
+                  className="megapayer-panel-soft p-2 rounded-lg border border-megapayer-border-soft transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 animate-fade-in-up"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
                       <div className="relative">
                         {token.logoUrl ? (
                           <img
                             src={token.logoUrl}
                             alt={`${token.symbol} logo`}
-                            className="w-12 h-12 rounded-xl shadow-lg"
+                            className="w-8 h-8 rounded-lg shadow-md"
                             onError={(e) => {
-                              // Fallback to generated icon if image fails to load
                               const target = e.target as HTMLImageElement;
-                              target.src = generateFallbackIcon(token.symbol, 48);
+                              target.src = generateFallbackIcon(token.symbol, 32);
                             }}
                           />
                         ) : (
                           <img
-                            src={generateFallbackIcon(token.symbol, 48)}
+                            src={generateFallbackIcon(token.symbol, 32)}
                             alt={`${token.symbol} generated icon`}
-                            className="w-12 h-12 rounded-xl shadow-lg"
+                            className="w-8 h-8 rounded-lg shadow-md"
                           />
                         )}
                       </div>
                       <div>
-                        <h3 className="font-bold text-megapayer-text text-lg">{token.symbol}</h3>
-                        <p className="text-sm text-megapayer-muted">{token.name}</p>
-                        <p className="text-xs text-megapayer-muted font-mono mt-1">
+                        <h3 className="font-bold text-megapayer-text text-sm">{token.symbol}</h3>
+                        <p className="text-xs text-megapayer-muted">{token.name}</p>
+                        <p className="text-[10px] text-megapayer-muted font-mono mt-0.5">
                           {token.address.slice(0, 6)}...{token.address.slice(-4)}
                         </p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <div className="text-right">
-                        <p className="text-sm text-megapayer-muted">{token.decimals} decimals</p>
+                        <p className="text-xs text-megapayer-muted">{token.decimals} decimals</p>
                         {token.balance && (
-                          <p className="text-sm font-semibold text-megapayer-text">{token.balance}</p>
+                          <p className="text-xs font-semibold text-megapayer-text">{token.balance}</p>
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleCopy(token.address, token.address)}
-                          className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
+                          className="p-1.5 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-lg transition-all duration-300 hover:scale-110"
                           title="Copy contract address"
                         >
-                          {copied === token.address ? <CustomIcons.CheckCircle className="h-4 w-4 text-megapayer-emerald" /> : <CustomIcons.Copy className="h-4 w-4" />}
+                          {copied === token.address ? <CustomIcons.CheckCircle className="h-3.5 w-3.5 text-megapayer-emerald" /> : <CustomIcons.Copy className="h-3.5 w-3.5" />}
                         </button>
                         
                         {currentNetwork?.blockExplorer && (
@@ -524,19 +522,19 @@ export default function TokensPage() {
                             href={`${currentNetwork.blockExplorer}/token/${token.address}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
+                            className="p-1.5 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-lg transition-all duration-300 hover:scale-110"
                             title="View on explorer"
                           >
-                            <CustomIcons.ExternalLink className="h-4 w-4" />
+                            <CustomIcons.ExternalLink className="h-3.5 w-3.5" />
                           </a>
                         )}
                         
                         <button
                           onClick={() => handleRemoveToken(token.address)}
-                          className="p-3 text-megapayer-muted hover:text-megapayer-accent hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
+                          className="p-1.5 text-megapayer-muted hover:text-megapayer-accent hover:bg-megapayer-panel-soft rounded-lg transition-all duration-300 hover:scale-110"
                           title="Remove token"
                         >
-                          <CustomIcons.Trash2 className="h-4 w-4" />
+                          <CustomIcons.Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>

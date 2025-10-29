@@ -95,13 +95,13 @@ export default function SendPage() {
   // Show loading while redirecting
   if (!isUnlocked) {
     return (
-      <div className="text-center py-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
-            <CustomIcons.Send className="w-10 h-10 text-white" />
+      <div className="text-center py-6">
+          <div className="w-12 h-12 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-lg flex items-center justify-center mx-auto mb-3 animate-pulse">
+            <CustomIcons.Send className="w-6 h-6 text-white" />
           </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-megapayer-teal mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-megapayer-text mb-2">Redirecting to unlock page...</h1>
-          <p className="text-megapayer-muted">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-megapayer-teal mx-auto mb-2"></div>
+          <h1 className="text-base font-bold text-megapayer-text mb-1">Redirecting to unlock page...</h1>
+          <p className="text-sm text-megapayer-muted">
             Please wait while we redirect you to unlock your wallet.
           </p>
         </div>
@@ -109,17 +109,17 @@ export default function SendPage() {
   }
 
   return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* Header Section - Compact */}
-        <div className="megapayer-panel p-4 text-megapayer-text relative overflow-hidden rounded-xl">
+        <div className="megapayer-panel p-2 text-megapayer-text relative overflow-hidden rounded-lg">
           <div className="absolute inset-0 bg-gradient-to-r from-megapayer-accent/10 via-megapayer-violet/10 to-megapayer-teal/10"></div>
           <div className="relative z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-lg flex items-center justify-center shadow-md">
-                <CustomIcons.Send className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-lg flex items-center justify-center shadow-md">
+                <CustomIcons.Send className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold mb-0.5 font-heading text-megapayer-text">Send Funds</h1>
+                <h1 className="text-sm font-bold mb-0 font-heading text-megapayer-text">Send Funds</h1>
                 <p className="text-megapayer-muted text-xs">Transfer tokens to any address securely</p>
               </div>
             </div>

@@ -204,48 +204,50 @@ export function SendForm({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Token Selection */}
-      <div className="megapayer-panel p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-megapayer-teal to-megapayer-emerald rounded-xl flex items-center justify-center shadow-lg">
-              <CustomIcons.Zap className="w-6 h-6 text-white" />
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      {/* Left Column */}
+      <div className="space-y-3">
+        {/* Token Selection */}
+        <div className="megapayer-panel p-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-megapayer-teal to-megapayer-emerald rounded-lg flex items-center justify-center shadow-md">
+                <CustomIcons.Zap className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-megapayer-text font-heading">Select Token</h2>
+                <p className="text-xs text-megapayer-muted">Choose the token you want to send</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-megapayer-text font-heading">Select Token</h2>
-              <p className="text-megapayer-muted">Choose the token you want to send</p>
-            </div>
+            <button
+              onClick={loadCustomTokens}
+              className="p-2 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-lg transition-all duration-300"
+              title="Refresh token list"
+            >
+              <CustomIcons.Refresh className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            onClick={loadCustomTokens}
-            className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-105"
-            title="Refresh token list"
-          >
-            <CustomIcons.Refresh className="h-5 w-5" />
-          </button>
-        </div>
         
         <div className="relative">
           <div 
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="w-full bg-megapayer-panel-soft border border-megapayer-border rounded-xl px-4 py-4 pr-12 text-megapayer-text focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 transition-all duration-300 hover:bg-megapayer-panel cursor-pointer flex items-center gap-3"
+            className="w-full bg-megapayer-panel-soft border border-megapayer-border rounded-lg px-3 py-2 pr-10 text-megapayer-text focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 transition-all duration-300 hover:bg-megapayer-panel cursor-pointer flex items-center gap-2"
           >
             {/* Native Token Logo */}
             {selectedToken?.address === '' && (
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm">
+              <div className="w-6 h-6 rounded flex items-center justify-center shadow-sm">
                 {nativeTokenLogo ? (
                   <img
                     src={nativeTokenLogo}
                     alt={`${currentNetwork?.symbol} logo`}
-                    className="w-8 h-8 rounded-lg"
+                    className="w-6 h-6 rounded"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = generateFallbackIcon(currentNetwork?.symbol || 'ETH', 56);
                     }}
                   />
                 ) : (
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                  <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white font-bold text-xs">
                     {currentNetwork?.symbol?.charAt(0) || 'E'}
                   </div>
                 )}
@@ -254,11 +256,11 @@ export function SendForm({
             
             {/* Custom Token Logo */}
             {selectedToken?.address !== '' && selectedToken && (
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm">
+              <div className="w-6 h-6 rounded flex items-center justify-center shadow-sm">
                 <img
                   src={(selectedToken as any).logoUrl || generateFallbackIcon(selectedToken.symbol, 56)}
                   alt={`${selectedToken.symbol} logo`}
-                  className="w-8 h-8 rounded-lg"
+                  className="w-6 h-6 rounded"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = generateFallbackIcon(selectedToken.symbol, 56);
@@ -268,17 +270,17 @@ export function SendForm({
             )}
             
             <div className="flex-1">
-              <div className="font-semibold">
+              <div className="font-semibold text-sm">
                 {selectedToken?.symbol || currentNetwork?.symbol || 'ETH'} - {selectedToken?.name || currentNetwork?.name || 'Ethereum'} {selectedToken?.address === '' ? '(Native)' : ''}
               </div>
             </div>
             
-            <CustomIcons.ChevronDown className="h-5 w-5 text-megapayer-muted" />
+            <CustomIcons.ChevronDown className="h-4 w-4 text-megapayer-muted" />
           </div>
           
           {/* Custom Dropdown */}
           {isDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-megapayer-panel border border-megapayer-border rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-megapayer-panel border border-megapayer-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
               {/* Native Token Option */}
               <div
                 onClick={() => {
@@ -290,27 +292,27 @@ export function SendForm({
                   });
                   setIsDropdownOpen(false);
                 }}
-                className="flex items-center gap-3 p-4 hover:bg-megapayer-panel-soft cursor-pointer transition-colors"
+                className="flex items-center gap-2 p-2 hover:bg-megapayer-panel-soft cursor-pointer transition-colors"
               >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm">
+              <div className="w-6 h-6 rounded flex items-center justify-center shadow-sm">
                 {nativeTokenLogo ? (
                   <img
                     src={nativeTokenLogo}
                     alt={`${currentNetwork?.symbol} logo`}
-                    className="w-8 h-8 rounded-lg"
+                    className="w-6 h-6 rounded"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = generateFallbackIcon(currentNetwork?.symbol || 'ETH', 56);
                     }}
                   />
                 ) : (
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                  <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white font-bold text-xs">
                     {currentNetwork?.symbol?.charAt(0) || 'E'}
                   </div>
                 )}
               </div>
               <div>
-                <div className="font-semibold text-megapayer-text">
+                <div className="font-semibold text-sm text-megapayer-text">
                   {currentNetwork?.symbol || 'ETH'} - {currentNetwork?.name || 'Ethereum'} (Native)
                 </div>
               </div>
@@ -324,13 +326,13 @@ export function SendForm({
                   onTokenChange(token);
                   setIsDropdownOpen(false);
                 }}
-                className="flex items-center gap-3 p-4 hover:bg-megapayer-panel-soft cursor-pointer transition-colors"
+                className="flex items-center gap-2 p-2 hover:bg-megapayer-panel-soft cursor-pointer transition-colors"
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm">
+                <div className="w-6 h-6 rounded flex items-center justify-center shadow-sm">
                   <img
                     src={(token as any).logoUrl || generateFallbackIcon(token.symbol, 56)}
                     alt={`${token.symbol} logo`}
-                    className="w-8 h-8 rounded-lg"
+                    className="w-6 h-6 rounded"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = generateFallbackIcon(token.symbol, 56);
@@ -338,7 +340,7 @@ export function SendForm({
                   />
                 </div>
                 <div>
-                  <div className="font-semibold text-megapayer-text">
+                  <div className="font-semibold text-sm text-megapayer-text">
                     {token.symbol} - {token.name || 'Custom Token'}
                   </div>
                 </div>
@@ -349,10 +351,10 @@ export function SendForm({
         </div>
         
         {customTokens.length === 0 && (
-          <div className="mt-6 p-4 megapayer-panel-soft rounded-xl border border-megapayer-border-soft">
-            <div className="flex items-center gap-3">
-              <CustomIcons.AlertTriangle className="w-5 h-5 text-megapayer-muted" />
-              <p className="text-sm text-megapayer-muted">
+          <div className="mt-2 p-2 megapayer-panel-soft rounded-lg border border-megapayer-border-soft">
+            <div className="flex items-center gap-2">
+              <CustomIcons.AlertTriangle className="w-4 h-4 text-megapayer-muted" />
+              <p className="text-xs text-megapayer-muted">
                 No custom tokens added yet. Go to Dashboard to add custom tokens.
               </p>
             </div>
@@ -360,50 +362,52 @@ export function SendForm({
         )}
       </div>
         
-      {/* Current Balance Display */}
-      <div className="megapayer-panel rounded-2xl shadow-megapayer border border-megapayer-border p-6 mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-megapayer-text mb-2">Current Balance</h3>
-            <p className="text-2xl font-bold text-megapayer-text mb-1">
-              {isLoadingBalance ? (
-                <span className="flex items-center space-x-2">
-                  <CustomIcons.Refresh className="h-4 w-4 animate-spin" />
-                  <span>Loading...</span>
-                </span>
-              ) : (
-                `${parseFloat(currentBalance).toFixed(6)} ${selectedToken.symbol}`
-              )}
-            </p>
-            {currentBalance && !isLoadingBalance && (
-              <p className="text-sm text-megapayer-muted">
-                {isLoadingUsd ? (
+        {/* Current Balance Display */}
+        <div className="megapayer-panel rounded-xl shadow-md border border-megapayer-border p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-semibold text-megapayer-text mb-1">Current Balance</h3>
+              <p className="text-lg font-bold text-megapayer-text mb-0.5">
+                {isLoadingBalance ? (
                   <span className="flex items-center space-x-1">
                     <CustomIcons.Refresh className="h-3 w-3 animate-spin" />
-                    <span>Loading USD...</span>
+                    <span className="text-sm">Loading...</span>
                   </span>
                 ) : (
-                  `$${usdBalance} USD`
+                  `${parseFloat(currentBalance).toFixed(6)} ${selectedToken.symbol}`
                 )}
               </p>
-            )}
+              {currentBalance && !isLoadingBalance && (
+                <p className="text-xs text-megapayer-muted">
+                  {isLoadingUsd ? (
+                    <span className="flex items-center space-x-1">
+                      <CustomIcons.Refresh className="h-3 w-3 animate-spin" />
+                      <span>Loading USD...</span>
+                    </span>
+                  ) : (
+                    `$${usdBalance} USD`
+                  )}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={loadBalance}
+              disabled={isLoadingBalance}
+              className="p-2 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-lg transition-all duration-300 disabled:opacity-50"
+              title="Refresh balance"
+            >
+              <CustomIcons.Refresh className={`h-3 w-3 ${isLoadingBalance ? 'animate-spin' : ''}`} />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={loadBalance}
-            disabled={isLoadingBalance}
-            className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110 disabled:opacity-50"
-            title="Refresh balance"
-          >
-            <CustomIcons.Refresh className={`h-4 w-4 ${isLoadingBalance ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Right Column */}
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* Recipient Address */}
-        <div className="megapayer-panel rounded-2xl shadow-megapayer border border-megapayer-border p-6">
-          <label htmlFor="to" className="block text-sm font-semibold text-megapayer-text mb-3">
+        <div className="megapayer-panel rounded-xl shadow-md border border-megapayer-border p-3">
+          <label htmlFor="to" className="block text-xs font-semibold text-megapayer-text mb-1">
             Recipient Address *
           </label>
           <input
@@ -412,15 +416,15 @@ export function SendForm({
             name="to"
             value={formData.to}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent font-mono text-sm text-megapayer-text placeholder-megapayer-muted"
+            className="w-full px-3 py-2 megapayer-panel-soft border border-megapayer-border rounded-lg focus:ring-2 focus:ring-megapayer-teal focus:border-transparent font-mono text-xs text-megapayer-text placeholder-megapayer-muted"
             placeholder="0x..."
             required
           />
         </div>
 
         {/* Amount */}
-        <div className="megapayer-panel rounded-2xl shadow-megapayer border border-megapayer-border p-6">
-          <label htmlFor="amount" className="block text-sm font-semibold text-megapayer-text mb-3">
+        <div className="megapayer-panel rounded-xl shadow-md border border-megapayer-border p-3">
+          <label htmlFor="amount" className="block text-xs font-semibold text-megapayer-text mb-1">
             Amount *
           </label>
           <input
@@ -429,52 +433,52 @@ export function SendForm({
             name="amount"
             value={formData.amount}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-megapayer-text placeholder-megapayer-muted"
+            className="w-full px-3 py-2 megapayer-panel-soft border border-megapayer-border rounded-lg focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-megapayer-text placeholder-megapayer-muted"
             placeholder="0.0"
             step="any"
             min="0"
             max={currentBalance}
             required
           />
-          <p className="text-xs text-megapayer-muted mt-2">
+          <p className="text-xs text-megapayer-muted mt-1">
             {selectedToken.symbol} amount
           </p>
           {formData.amount && parseFloat(formData.amount) > parseFloat(currentBalance) && (
-            <div className="flex items-center gap-2 mt-2 p-3 megapayer-panel-soft border border-red-400/30 rounded-xl">
-              <CustomIcons.AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <div className="flex items-center gap-1.5 mt-1.5 p-2 megapayer-panel-soft border border-red-400/30 rounded-lg">
+              <CustomIcons.AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0" />
               <p className="text-xs text-red-600 font-medium">Amount exceeds available balance</p>
             </div>
           )}
           
           {/* Percentage Buttons */}
-          <div className="mt-4">
-            <p className="text-xs text-megapayer-muted mb-3">Quick select:</p>
-            <div className="flex gap-3">
+          <div className="mt-2">
+            <p className="text-xs text-megapayer-muted mb-1.5">Quick select:</p>
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => handlePercentageClick(25)}
-                className="px-4 py-2 text-sm megapayer-panel-soft text-megapayer-text rounded-xl hover:bg-megapayer-panel transition-all duration-200 font-medium"
+                className="px-3 py-1.5 text-xs megapayer-panel-soft text-megapayer-text rounded-lg hover:bg-megapayer-panel transition-all duration-200 font-medium"
               >
                 25%
               </button>
               <button
                 type="button"
                 onClick={() => handlePercentageClick(50)}
-                className="px-4 py-2 text-sm megapayer-panel-soft text-megapayer-text rounded-xl hover:bg-megapayer-panel transition-all duration-200 font-medium"
+                className="px-3 py-1.5 text-xs megapayer-panel-soft text-megapayer-text rounded-lg hover:bg-megapayer-panel transition-all duration-200 font-medium"
               >
                 50%
               </button>
               <button
                 type="button"
                 onClick={() => handlePercentageClick(75)}
-                className="px-4 py-2 text-sm megapayer-panel-soft text-megapayer-text rounded-xl hover:bg-megapayer-panel transition-all duration-200 font-medium"
+                className="px-3 py-1.5 text-xs megapayer-panel-soft text-megapayer-text rounded-lg hover:bg-megapayer-panel transition-all duration-200 font-medium"
               >
                 75%
               </button>
               <button
                 type="button"
                 onClick={() => handlePercentageClick(100)}
-                className="px-4 py-2 text-sm megapayer-btn-primary rounded-xl transition-all duration-200 font-medium hover:scale-105"
+                className="px-3 py-1.5 text-xs megapayer-btn-primary rounded-lg transition-all duration-200 font-medium hover:scale-105"
               >
                 MAX
               </button>
@@ -484,35 +488,35 @@ export function SendForm({
 
         {/* Error Display */}
         {error && (
-          <div className="megapayer-panel-soft border border-red-400/30 rounded-2xl p-4">
-            <div className="flex items-center gap-3">
-              <CustomIcons.AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
-              <p className="text-sm text-red-600 font-medium">{error}</p>
+          <div className="megapayer-panel-soft border border-red-400/30 rounded-lg p-2">
+            <div className="flex items-center gap-2">
+              <CustomIcons.AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+              <p className="text-xs text-red-600 font-medium">{error}</p>
             </div>
           </div>
         )}
 
         {/* Success Display */}
         {txHash && (
-          <div className="megapayer-panel-soft border border-megapayer-emerald/30 rounded-2xl p-4">
+          <div className="megapayer-panel-soft border border-megapayer-emerald/30 rounded-lg p-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-megapayer-emerald rounded-full"></div>
-                <p className="text-sm text-megapayer-emerald font-medium">Transaction sent successfully!</p>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-megapayer-emerald rounded-full"></div>
+                <p className="text-xs text-megapayer-emerald font-medium">Transaction sent successfully!</p>
               </div>
               {getExplorerUrl(txHash) && (
                 <a
                   href={getExplorerUrl(txHash)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-megapayer-emerald hover:text-megapayer-teal transition-colors duration-200"
+                  className="flex items-center gap-1 text-xs text-megapayer-emerald hover:text-megapayer-teal transition-colors duration-200"
                 >
                   <span>View on Explorer</span>
                   <CustomIcons.ExternalLink className="h-3 w-3" />
                 </a>
               )}
             </div>
-            <p className="text-xs text-megapayer-muted mt-2 font-mono">{txHash}</p>
+            <p className="text-xs text-megapayer-muted mt-1 font-mono">{txHash}</p>
           </div>
         )}
 
@@ -520,9 +524,9 @@ export function SendForm({
         <button
           type="submit"
           disabled={isLoading || !formData.to || !formData.amount || parseFloat(formData.amount) > parseFloat(currentBalance)}
-          className="w-full megapayer-btn-primary py-4 px-6 rounded-xl text-lg font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3"
+          className="w-full megapayer-btn-primary py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
         >
-          <CustomIcons.Send className="w-5 h-5" />
+          <CustomIcons.Send className="w-4 h-4" />
           <span>{isLoading ? 'Sending...' : 'Send Transaction'}</span>
         </button>
       </form>

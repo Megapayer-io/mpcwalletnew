@@ -100,109 +100,105 @@ export function NetworkForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Custom Network</h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="chainId" className="block text-sm font-medium text-gray-700 mb-1">
-              Chain ID *
-            </label>
-            <input
-              type="number"
-              id="chainId"
-              name="chainId"
-              value={formData.chainId}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., 1 for Ethereum Mainnet"
-              required
-            />
-          </div>
+    <div className="space-y-2">
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <div>
+          <label htmlFor="chainId" className="block text-xs font-semibold text-megapayer-text mb-1">
+            Chain ID *
+          </label>
+          <input
+            type="number"
+            id="chainId"
+            name="chainId"
+            value={formData.chainId}
+            onChange={handleInputChange}
+            className="w-full px-2 py-1.5 megapayer-panel-soft border border-megapayer-border rounded-lg focus:outline-none focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-xs text-megapayer-text placeholder-megapayer-muted"
+            placeholder="e.g., 1 for Ethereum Mainnet"
+            required
+          />
+        </div>
 
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Network Name *
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., Ethereum Mainnet"
-              required
-            />
-          </div>
+        <div>
+          <label htmlFor="name" className="block text-xs font-semibold text-megapayer-text mb-1">
+            Network Name *
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={formData.name}
+            onChange={handleInputChange}
+            className="w-full px-2 py-1.5 megapayer-panel-soft border border-megapayer-border rounded-lg focus:outline-none focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-xs text-megapayer-text placeholder-megapayer-muted"
+            placeholder="e.g., Ethereum Mainnet"
+            required
+          />
+        </div>
 
-          <div>
-            <label htmlFor="rpcUrl" className="block text-sm font-medium text-gray-700 mb-1">
-              RPC URL *
-            </label>
-            <input
-              type="url"
-              id="rpcUrl"
-              name="rpcUrl"
-              value={formData.rpcUrl}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="https://eth.llamarpc.com"
-              required
-            />
-          </div>
+        <div>
+          <label htmlFor="rpcUrl" className="block text-xs font-semibold text-megapayer-text mb-1">
+            RPC URL *
+          </label>
+          <input
+            type="url"
+            id="rpcUrl"
+            name="rpcUrl"
+            value={formData.rpcUrl}
+            onChange={handleInputChange}
+            className="w-full px-2 py-1.5 megapayer-panel-soft border border-megapayer-border rounded-lg focus:outline-none focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-xs text-megapayer-text placeholder-megapayer-muted"
+            placeholder="https://eth.llamarpc.com"
+            required
+          />
+        </div>
 
-          <div>
-            <label htmlFor="symbol" className="block text-sm font-medium text-gray-700 mb-1">
-              Currency Symbol *
-            </label>
-            <input
-              type="text"
-              id="symbol"
-              name="symbol"
-              value={formData.symbol}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., ETH"
-              required
-            />
-          </div>
+        <div>
+          <label htmlFor="symbol" className="block text-xs font-semibold text-megapayer-text mb-1">
+            Currency Symbol *
+          </label>
+          <input
+            type="text"
+            id="symbol"
+            name="symbol"
+            value={formData.symbol}
+            onChange={handleInputChange}
+            className="w-full px-2 py-1.5 megapayer-panel-soft border border-megapayer-border rounded-lg focus:outline-none focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-xs text-megapayer-text placeholder-megapayer-muted"
+            placeholder="e.g., ETH"
+            required
+          />
+        </div>
 
-          <div>
-            <label htmlFor="blockExplorer" className="block text-sm font-medium text-gray-700 mb-1">
-              Block Explorer URL (optional)
-            </label>
-            <input
-              type="url"
-              id="blockExplorer"
-              name="blockExplorer"
-              value={formData.blockExplorer}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="https://etherscan.io"
-            />
-          </div>
+        <div>
+          <label htmlFor="blockExplorer" className="block text-xs font-semibold text-megapayer-text mb-1">
+            Block Explorer URL (optional)
+          </label>
+          <input
+            type="url"
+            id="blockExplorer"
+            name="blockExplorer"
+            value={formData.blockExplorer}
+            onChange={handleInputChange}
+            className="w-full px-2 py-1.5 megapayer-panel-soft border border-megapayer-border rounded-lg focus:outline-none focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-xs text-megapayer-text placeholder-megapayer-muted"
+            placeholder="https://etherscan.io"
+          />
+        </div>
 
-          {(error || validationError) && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <p className="text-sm text-red-600">{error || validationError}</p>
-              </div>
+        {(error || validationError) && (
+          <div className="p-2 megapayer-panel-soft border border-red-400/30 rounded-lg">
+            <div className="flex items-center space-x-1.5">
+              <AlertCircle className="h-3.5 w-3.5 text-red-600" />
+              <p className="text-xs text-red-600">{error || validationError}</p>
             </div>
-          )}
+          </div>
+        )}
 
-          <button
-            type="submit"
-            disabled={isValidating || !formData.chainId || !formData.name || !formData.rpcUrl || !formData.symbol}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus className="h-4 w-4" />
-            <span>{isValidating ? 'Validating...' : 'Add Network'}</span>
-          </button>
-        </form>
-      </div>
+        <button
+          type="submit"
+          disabled={isValidating || !formData.chainId || !formData.name || !formData.rpcUrl || !formData.symbol}
+          className="w-full flex items-center justify-center space-x-2 px-3 py-2 megapayer-btn-primary rounded-lg text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-[1.02]"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          <span>{isValidating ? 'Validating...' : 'Add Network'}</span>
+        </button>
+      </form>
     </div>
   );
 }

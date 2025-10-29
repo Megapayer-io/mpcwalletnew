@@ -13,7 +13,7 @@ interface ReceiveFormProps {
 export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(true);
-  const [qrSize, setQrSize] = useState(256);
+  const [qrSize, setQrSize] = useState(128);
   const [amount, setAmount] = useState(customAmount || '');
   const [selectedToken, setSelectedToken] = useState(customToken || 'ETH');
   const [showShareModal, setShowShareModal] = useState(false);
@@ -205,42 +205,42 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
 
   if (!address) {
     return (
-      <div className="megapayer-panel rounded-2xl shadow-megapayer border border-megapayer-border p-8 text-center">
-        <CustomIcons.AlertTriangle className="h-12 w-12 text-megapayer-muted mx-auto mb-4" />
-        <p className="text-megapayer-muted">No wallet address available</p>
+      <div className="megapayer-panel rounded-lg shadow-md border border-megapayer-border p-3 text-center">
+        <CustomIcons.AlertTriangle className="h-8 w-8 text-megapayer-muted mx-auto mb-2" />
+        <p className="text-sm text-megapayer-muted">No wallet address available</p>
       </div>
     );
   }
 
   return (
-    <div className="p-8 space-y-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="p-3 space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* QR Code Section */}
-        <div className="megapayer-panel rounded-2xl shadow-megapayer border border-megapayer-border p-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-megapayer-teal to-megapayer-emerald rounded-xl flex items-center justify-center shadow-lg">
-                <CustomIcons.QrCode className="w-6 h-6 text-white" />
+        <div className="megapayer-panel rounded-lg shadow-md border border-megapayer-border p-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-megapayer-teal to-megapayer-emerald rounded-lg flex items-center justify-center shadow-md">
+                <CustomIcons.QrCode className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-megapayer-text font-heading">QR Code</h2>
-                <p className="text-megapayer-muted">Scan to send funds</p>
+                <h2 className="text-sm font-bold text-megapayer-text font-heading">QR Code</h2>
+                <p className="text-xs text-megapayer-muted">Scan to send funds</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
               <button
                 onClick={() => setShowQR(!showQR)}
-                className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-105"
+                className="p-1.5 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-lg transition-all duration-300"
                 title={showQR ? 'Hide QR Code' : 'Show QR Code'}
               >
-                {showQR ? <CustomIcons.EyeOff className="h-5 w-5" /> : <CustomIcons.Eye className="h-5 w-5" />}
+                {showQR ? <CustomIcons.EyeOff className="h-3.5 w-3.5" /> : <CustomIcons.Eye className="h-3.5 w-3.5" />}
               </button>
               <button
                 onClick={handleDownloadQR}
-                className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-105"
+                className="p-1.5 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-lg transition-all duration-300"
                 title="Download QR Code"
               >
-                <CustomIcons.Download className="h-5 w-5" />
+                <CustomIcons.Download className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
@@ -249,27 +249,27 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
             <div className="text-center">
               <div 
                 ref={qrRef}
-                className="inline-block p-4 megapayer-panel-soft border-2 border-megapayer-border rounded-2xl max-w-full"
+                className="inline-block p-2 megapayer-panel-soft border border-megapayer-border rounded-lg max-w-full"
               >
                 {qrCodeDataUrl ? (
                   <img 
                     src={qrCodeDataUrl} 
                     alt="Wallet QR Code" 
-                    className="rounded-xl max-w-full h-auto"
-                    style={{ width: Math.min(qrSize, 300), height: Math.min(qrSize, 300) }}
+                    className="rounded-lg max-w-full h-auto"
+                    style={{ width: Math.min(qrSize, 200), height: Math.min(qrSize, 200) }}
                   />
                 ) : (
-                  <div className="w-48 h-48 megapayer-panel-soft rounded-xl flex items-center justify-center">
-                    <CustomIcons.Refresh className="h-12 w-12 text-megapayer-muted animate-spin" />
+                  <div className="w-24 h-24 megapayer-panel-soft rounded-lg flex items-center justify-center">
+                    <CustomIcons.Refresh className="h-6 w-6 text-megapayer-muted animate-spin" />
                   </div>
                 )}
               </div>
               
-              <p className="text-sm text-megapayer-muted mt-4 px-2">
+              <p className="text-xs text-megapayer-muted mt-2 px-2">
                 Scan this QR code to send {selectedToken} to your wallet
               </p>
               {amount && parseFloat(amount) > 0 && (
-                <p className="text-xs text-megapayer-teal mt-2 font-semibold">
+                <p className="text-xs text-megapayer-teal mt-1 font-semibold">
                   Amount: {amount} {selectedToken}
                 </p>
               )}
@@ -277,16 +277,16 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
           )}
 
           {/* QR Size Controls */}
-          <div className="mt-6">
-            <label className="block text-sm font-semibold text-megapayer-text mb-3">
+          <div className="mt-2">
+            <label className="block text-xs font-semibold text-megapayer-text mb-1.5">
               QR Code Size
             </label>
-            <div className="flex space-x-3">
-              {[128, 256, 512].map((size) => (
+            <div className="flex space-x-2">
+              {[128, 256].map((size) => (
                 <button
                   key={size}
                   onClick={() => setQrSize(size)}
-                  className={`px-4 py-2 text-sm rounded-xl transition-all duration-200 font-medium ${
+                  className={`px-2 py-1 text-xs rounded-lg transition-all duration-200 font-medium ${
                     qrSize === size
                       ? 'megapayer-btn-primary'
                       : 'megapayer-panel-soft text-megapayer-text hover:bg-megapayer-panel'
@@ -300,51 +300,51 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
         </div>
 
         {/* Address & Amount Section */}
-        <div className="megapayer-panel rounded-2xl shadow-megapayer border border-megapayer-border p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-megapayer-violet to-megapayer-accent rounded-xl flex items-center justify-center shadow-lg">
-              <CustomIcons.Wallet className="w-6 h-6 text-white" />
+        <div className="megapayer-panel rounded-lg shadow-md border border-megapayer-border p-3">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-megapayer-violet to-megapayer-accent rounded-lg flex items-center justify-center shadow-md">
+              <CustomIcons.Wallet className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-megapayer-text font-heading">Wallet Address</h2>
-              <p className="text-megapayer-muted">Your receiving address</p>
+              <h2 className="text-sm font-bold text-megapayer-text font-heading">Wallet Address</h2>
+              <p className="text-xs text-megapayer-muted">Your receiving address</p>
             </div>
           </div>
           
           {/* Address Display */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-megapayer-text mb-3">
+          <div className="mb-3">
+            <label className="block text-xs font-semibold text-megapayer-text mb-1.5">
               Your {currentNetwork?.name} Address
             </label>
-            <div className="flex items-center space-x-3">
-              <div className="flex-1 p-4 megapayer-panel-soft border border-megapayer-border rounded-xl overflow-hidden">
-                <p className="font-mono text-sm break-all text-megapayer-text leading-relaxed word-break-all">{address}</p>
+            <div className="flex items-center space-x-2">
+              <div className="flex-1 p-2 megapayer-panel-soft border border-megapayer-border rounded-lg overflow-hidden">
+                <p className="font-mono text-xs break-all text-megapayer-text leading-relaxed word-break-all">{address}</p>
               </div>
               <button
                 onClick={handleCopyAddress}
-                className="p-4 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel rounded-xl transition-all duration-300 hover:scale-105 flex-shrink-0"
+                className="p-2 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel rounded-lg transition-all duration-300 flex-shrink-0"
                 title="Copy address"
               >
                 {copied ? (
-                  <CustomIcons.CheckCircle className="h-5 w-5 text-megapayer-emerald" />
+                  <CustomIcons.CheckCircle className="h-4 w-4 text-megapayer-emerald" />
                 ) : (
-                  <CustomIcons.Copy className="h-5 w-5" />
+                  <CustomIcons.Copy className="h-4 w-4" />
                 )}
               </button>
             </div>
           </div>
 
           {/* Amount Input */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-megapayer-text mb-3">
+          <div className="mb-3">
+            <label className="block text-xs font-semibold text-megapayer-text mb-1.5">
               Request Amount (Optional)
             </label>
-            <div className="flex space-x-3">
+            <div className="flex space-x-2">
               <input
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="flex-1 px-4 py-3 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-megapayer-text placeholder-megapayer-muted"
+                className="flex-1 px-3 py-2 megapayer-panel-soft border border-megapayer-border rounded-lg focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-xs text-megapayer-text placeholder-megapayer-muted"
                 placeholder="0.0"
                 step="any"
                 min="0"
@@ -352,33 +352,33 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
               <select
                 value={selectedToken}
                 onChange={(e) => setSelectedToken(e.target.value)}
-                className="px-4 py-3 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-megapayer-text"
+                className="px-3 py-2 megapayer-panel-soft border border-megapayer-border rounded-lg focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-xs text-megapayer-text"
               >
                 <option value={currentNetwork?.symbol || 'ETH'}>{currentNetwork?.symbol || 'ETH'}</option>
               </select>
             </div>
             {amount && parseFloat(amount) > 0 && (
-              <p className="text-sm text-megapayer-teal mt-2 font-medium">
+              <p className="text-xs text-megapayer-teal mt-1 font-medium">
                 Payment request: {amount} {selectedToken}
               </p>
             )}
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <button
               onClick={handleCopyPaymentRequest}
-              className="w-full megapayer-btn-primary py-4 px-6 rounded-xl text-lg font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg flex items-center justify-center space-x-3"
+              className="w-full megapayer-btn-primary py-2 px-4 rounded-lg text-xs font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-md flex items-center justify-center space-x-2"
             >
-              <CustomIcons.Copy className="h-5 w-5" />
+              <CustomIcons.Copy className="h-3.5 w-3.5" />
               <span>Copy Payment Request</span>
             </button>
             
             <button
               onClick={() => setShowShareModal(true)}
-              className="w-full bg-gradient-to-r from-megapayer-emerald to-megapayer-teal text-white py-4 px-6 rounded-xl text-lg font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg flex items-center justify-center space-x-3"
+              className="w-full bg-gradient-to-r from-megapayer-emerald to-megapayer-teal text-white py-2 px-4 rounded-lg text-xs font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-md flex items-center justify-center space-x-2"
             >
-              <CustomIcons.Share2 className="h-5 w-5" />
+              <CustomIcons.Share2 className="h-3.5 w-3.5" />
               <span>Share Address</span>
             </button>
           </div>
@@ -388,37 +388,33 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
       {/* Share Modal */}
       {showShareModal && (
         <div className="fixed inset-0 bg-gradient-to-br from-megapayer-accent/20 via-megapayer-violet/10 to-megapayer-teal/20 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="megapayer-panel rounded-3xl shadow-2xl max-w-md w-full p-8 relative border border-megapayer-border/50 backdrop-blur-xl bg-white/95 overflow-hidden">
-            {/* Decorative Background Elements */}
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-megapayer-accent/10 to-megapayer-violet/5 rounded-full"></div>
-            <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-to-br from-megapayer-teal/10 to-megapayer-emerald/5 rounded-full"></div>
-            
+          <div className="megapayer-panel rounded-xl shadow-xl max-w-sm w-full p-4 relative border border-megapayer-border/50 backdrop-blur-xl bg-white/95 overflow-hidden">
             <button
               onClick={() => setShowShareModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl hover:bg-megapayer-panel-soft text-megapayer-muted hover:text-megapayer-text transition-all duration-200 z-10"
+              className="absolute top-2 right-2 p-1.5 rounded-lg hover:bg-megapayer-panel-soft text-megapayer-muted hover:text-megapayer-text transition-all duration-200 z-10"
             >
-              <CustomIcons.X className="h-5 w-5" />
+              <CustomIcons.X className="h-4 w-4" />
             </button>
 
-            <div className="text-center mb-6 relative z-10">
-              <div className="w-16 h-16 bg-gradient-to-br from-megapayer-emerald via-megapayer-teal to-megapayer-violet rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <CustomIcons.Share2 className="w-8 h-8 text-white" />
+            <div className="text-center mb-4 relative z-10">
+              <div className="w-12 h-12 bg-gradient-to-br from-megapayer-emerald via-megapayer-teal to-megapayer-violet rounded-lg flex items-center justify-center mx-auto mb-3 shadow-md">
+                <CustomIcons.Share2 className="w-5 h-5 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-megapayer-text font-heading">Share Your Address</h3>
-              <p className="text-megapayer-muted">Choose how to share your wallet address</p>
+              <h3 className="text-sm font-bold text-megapayer-text font-heading">Share Your Address</h3>
+              <p className="text-xs text-megapayer-muted">Choose how to share your wallet address</p>
             </div>
 
-            <div className="space-y-3 relative z-10">
+            <div className="space-y-2 relative z-10">
               {shareOptions.map((option, index) => (
                 <button
                   key={index}
                   onClick={option.action}
-                  className="w-full flex items-center space-x-4 p-4 megapayer-panel-soft hover:bg-megapayer-panel rounded-xl transition-all duration-200 hover:scale-[1.02] text-left"
+                  className="w-full flex items-center space-x-2 p-2 megapayer-panel-soft hover:bg-megapayer-panel rounded-lg transition-all duration-200 hover:scale-[1.02] text-left"
                 >
-                  <div className="w-10 h-10 bg-gradient-to-br from-megapayer-teal to-megapayer-emerald rounded-xl flex items-center justify-center">
-                    <option.icon className="h-5 w-5 text-white" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-megapayer-teal to-megapayer-emerald rounded-lg flex items-center justify-center">
+                    <option.icon className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-megapayer-text font-medium">{option.name}</span>
+                  <span className="text-sm text-megapayer-text font-medium">{option.name}</span>
                 </button>
               ))}
             </div>

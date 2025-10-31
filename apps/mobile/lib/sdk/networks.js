@@ -20,13 +20,6 @@ export const DEFAULT_NETWORKS = [
         rpcUrl: 'https://polygon-rpc.com',
         symbol: 'MATIC',
         blockExplorer: 'https://polygonscan.com'
-    },
-    {
-        chainId: 11155111,
-        name: 'Sepolia Testnet',
-        rpcUrl: 'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-        symbol: 'ETH',
-        blockExplorer: 'https://sepolia.etherscan.io'
     }
 ];
 const STORAGE_KEY = 'evm-wallet-networks';

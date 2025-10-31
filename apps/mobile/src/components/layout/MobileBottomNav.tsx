@@ -42,6 +42,7 @@ export const MobileBottomNav: React.FC = () => {
       activeColor: 'text-white',
       labelColor: 'text-gray-700 dark:text-gray-300',
       activeLabelColor: 'text-indigo-600 dark:text-indigo-400',
+      disabled: true, // Disabled for now
     },
     { 
       name: 'History', 
@@ -86,30 +87,31 @@ export const MobileBottomNav: React.FC = () => {
         <div className="flex items-center justify-around max-w-md mx-auto">
           {mainNavItems.map((item) => {
             const Icon = item.icon;
-            const active = isActive(item.href);
+            const active = !item.disabled && isActive(item.href);
+            const isDisabled = item.disabled;
             
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="flex flex-col items-center justify-center min-w-[64px] py-1.5 group"
-              >
+            const content = (
+              <>
                 <div
                   className={`
                     w-12 h-12 rounded-xl flex items-center justify-center
                     transition-all duration-300
-                    ${active
-                      ? `${item.activeBg} shadow-lg scale-105`
-                      : `${item.bgColor} group-hover:scale-110 group-hover:shadow-md border border-transparent hover:border-gray-200 dark:hover:border-gray-700`
+                    ${isDisabled 
+                      ? `${item.bgColor} opacity-60 cursor-not-allowed`
+                      : active
+                        ? `${item.activeBg} shadow-lg scale-105`
+                        : `${item.bgColor} group-hover:scale-110 group-hover:shadow-md border border-transparent hover:border-gray-200 dark:hover:border-gray-700`
                     }
                   `}
                 >
                   <Icon
                     className={`
                       w-6 h-6 transition-all duration-300
-                      ${active 
-                        ? `${item.activeColor} scale-110` 
-                        : `${item.color}`
+                      ${isDisabled
+                        ? `${item.color} opacity-60`
+                        : active 
+                          ? `${item.activeColor} scale-110` 
+                          : `${item.color}`
                       }
                     `}
                   />
@@ -118,14 +120,43 @@ export const MobileBottomNav: React.FC = () => {
                   className={`
                     mt-1.5 text-[10px] font-bold
                     transition-all duration-300
-                    ${active 
-                      ? `${item.activeLabelColor}` 
-                      : `${item.labelColor}`
+                    ${isDisabled
+                      ? `${item.labelColor} opacity-60`
+                      : active 
+                        ? `${item.activeLabelColor}` 
+                        : `${item.labelColor}`
                     }
                   `}
                 >
                   {item.name}
                 </span>
+              </>
+            );
+            
+            if (isDisabled) {
+              return (
+                <button
+                  key={item.name}
+                  type="button"
+                  disabled
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  className="flex flex-col items-center justify-center min-w-[64px] py-1.5 cursor-not-allowed"
+                >
+                  {content}
+                </button>
+              );
+            }
+            
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="flex flex-col items-center justify-center min-w-[64px] py-1.5 group"
+              >
+                {content}
               </Link>
             );
           })}

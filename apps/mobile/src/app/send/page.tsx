@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
-import { Layout } from '@/components/layout/Layout';
 import { SendForm } from '@/components/SendForm';
 import { CustomIcons } from '@/components/icons/CustomIcons';
-import { getTokenIcon, generateFallbackIcon } from '@/lib/tokenIconService';
+import { getTokenIcon } from '@/lib/tokenIconService';
+import { motion } from 'framer-motion';
 
 interface Token {
   address: string;
@@ -15,27 +15,144 @@ interface Token {
   name?: string;
 }
 
+// Amazing SVG Graphics for Send Page
+const SendIcon = () => (
+  <svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="sendGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#22E1FF" />
+        <stop offset="50%" stopColor="#7C3AED" />
+        <stop offset="100%" stopColor="#34D399" />
+      </linearGradient>
+      <filter id="glowSend">
+        <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    
+    {/* Background Circle */}
+    <circle cx="70" cy="70" r="65" fill="rgba(34, 225, 255, 0.08)" />
+    
+    {/* Send Arrow - Animated Path */}
+    <motion.path
+      d="M30 70 L90 70 M85 60 L90 70 L85 80"
+      stroke="url(#sendGradient)"
+      strokeWidth="5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      filter="url(#glowSend)"
+      initial={{ pathLength: 0, opacity: 0 }}
+      animate={{ pathLength: 1, opacity: 1 }}
+      transition={{ duration: 1, ease: "easeOut" }}
+    />
+    
+    {/* Sending Circle */}
+    <motion.circle
+      cx="30"
+      cy="70"
+      r="15"
+      fill="none"
+      stroke="url(#sendGradient)"
+      strokeWidth="3"
+      filter="url(#glowSend)"
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ delay: 0.5, type: "spring" }}
+    />
+    
+    {/* Particles flying out */}
+    {[...Array(6)].map((_, i) => {
+      const angle = (i * 60) * Math.PI / 180;
+      const radius = 35;
+      return (
+        <motion.circle
+          key={i}
+          cx="70"
+          cy="70"
+          r="3"
+          fill="#22E1FF"
+          initial={{ 
+            x: Math.cos(angle) * 0 - 70,
+            y: Math.sin(angle) * 0 - 70,
+            opacity: 0,
+            scale: 0
+          }}
+          animate={{
+            x: Math.cos(angle) * radius - 70,
+            y: Math.sin(angle) * radius - 70,
+            opacity: [0, 1, 0],
+            scale: [0, 1.2, 0]
+          }}
+          transition={{
+            delay: 1 + i * 0.1,
+            duration: 1.5,
+            repeat: Infinity,
+            ease: "easeOut"
+          }}
+        />
+      );
+    })}
+    
+    {/* Destination Circle */}
+    <motion.circle
+      cx="100"
+      cy="70"
+      r="12"
+      fill="url(#sendGradient)"
+      filter="url(#glowSend)"
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ 
+        scale: [1, 1.2, 1],
+        opacity: [0.7, 1, 0.7]
+      }}
+      transition={{
+        delay: 0.8,
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }}
+    />
+    
+    {/* Success Checkmark */}
+    <motion.g
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 1] }}
+      transition={{ delay: 2, duration: 0.5 }}
+    >
+      <circle cx="100" cy="70" r="20" fill="rgba(52,211,153,0.2)" />
+      <path
+        d="M93 70 L97 74 L107 64"
+        stroke="#34D399"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </motion.g>
+  </svg>
+);
+
 export default function SendPage() {
   const router = useRouter();
   const [selectedToken, setSelectedToken] = useState<Token | null>(null);
   const [customTokens, setCustomTokens] = useState<Token[]>([]);
-  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [nativeTokenLogo, setNativeTokenLogo] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const { isUnlocked, currentNetwork, getBalance } = useWalletStore();
+  const { isUnlocked, currentNetwork, isInitialized } = useWalletStore();
 
-  // Redirect to unlock page if wallet is locked
   useEffect(() => {
-    if (!isUnlocked) {
+    if (isInitialized && !isUnlocked) {
       router.push('/unlock');
     }
-  }, [isUnlocked, router]);
+  }, [isInitialized, isUnlocked, router]);
 
   useEffect(() => {
     loadCustomTokens();
   }, [currentNetwork?.chainId]);
 
-  // Fetch native token logo
   useEffect(() => {
     const fetchNativeTokenLogo = async () => {
       if (currentNetwork?.symbol) {
@@ -43,11 +160,9 @@ export default function SendPage() {
           const iconResult = await getTokenIcon(currentNetwork.symbol, '');
           if (iconResult.url) {
             setNativeTokenLogo(iconResult.url);
-          } else {
-            console.log(`❌ No logo found for native token ${currentNetwork.symbol}`);
           }
         } catch (error) {
-          console.log(`❌ Error fetching logo for native token ${currentNetwork.symbol}:`, error);
+          console.log(`Error fetching logo for native token ${currentNetwork.symbol}:`, error);
         }
       }
     };
@@ -61,7 +176,6 @@ export default function SendPage() {
     }
     
     try {
-      // Migrate old tokens to network-specific storage
       const oldTokenKey = 'mpc-wallet-tokens';
       const networkKey = `mpc-wallet-tokens-${currentNetwork.chainId}`;
       
@@ -69,17 +183,13 @@ export default function SendPage() {
       const existingNewTokens = localStorage.getItem(networkKey);
       
       if (oldTokens && !existingNewTokens) {
-        console.log(`🔄 Migrating tokens to network-specific storage for network ${currentNetwork.chainId}`);
         localStorage.setItem(networkKey, oldTokens);
-        console.log(`✅ Migrated tokens to ${networkKey}`);
       }
       
-      // Load tokens specific to current network
       const storedTokens = localStorage.getItem(networkKey);
       let tokens = storedTokens ? JSON.parse(storedTokens) : [];
       setCustomTokens(tokens);
       
-      // Set default to native token if no token selected
       if (!selectedToken) {
         setSelectedToken({
           address: '',
@@ -93,47 +203,53 @@ export default function SendPage() {
     }
   };
 
-  // Show loading while redirecting
-  if (!isUnlocked) {
-    return (
-      <Layout title="Send Funds">
-        <div className="max-w-2xl mx-auto text-center py-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
-            <CustomIcons.Send className="w-10 h-10 text-white" />
-          </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-megapayer-teal mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-megapayer-text mb-2">Redirecting to unlock page...</h1>
-          <p className="text-megapayer-muted">
-            Please wait while we redirect you to unlock your wallet.
-          </p>
-        </div>
-      </Layout>
-    );
+  if (!isInitialized || !isUnlocked) {
+    return null;
   }
 
   return (
-    <Layout title="Send Funds">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header Section */}
-        <div className="megapayer-panel p-8 text-megapayer-text relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-megapayer-accent/10 via-megapayer-violet/10 to-megapayer-teal/10"></div>
-          <div className="relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-2xl flex items-center justify-center shadow-lg">
-                <CustomIcons.Send className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold mb-2 font-heading text-megapayer-text">Send Funds</h1>
-                <p className="text-megapayer-muted text-lg">Transfer tokens to any address securely</p>
-              </div>
-            </div>
-          </div>
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-megapayer-accent/10 rounded-full"></div>
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-megapayer-violet/5 rounded-full"></div>
-        </div>
+    <div className="min-h-screen megapayer-bg flex flex-col relative overflow-hidden pb-24">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute -top-1/2 -right-1/2 w-full h-full rounded-full blur-3xl opacity-8"
+          style={{
+            background: `linear-gradient(135deg, rgba(124,58,237,0.2), rgba(34,225,255,0.15))`
+          }}
+          animate={{
+            scale: [1, 1.2, 1],
+            rotate: [0, 90, 0]
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
+      </div>
 
-        {/* Send Form */}
-        {selectedToken && (
+      {/* Header Section */}
+      <div className="px-5 pt-6 pb-3 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-4 mb-4"
+        >
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#FF7A4515] flex-shrink-0">
+            <SendIcon />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold font-heading text-megapayer-text">Send</h1>
+            <p className="text-sm font-body text-megapayer-muted mt-0.5">
+              Transfer tokens securely
+            </p>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Send Form */}
+      {selectedToken && (
+        <div className="flex-1 overflow-y-auto px-5 pb-4 relative z-10">
           <SendForm 
             selectedToken={selectedToken}
             onTokenChange={setSelectedToken}
@@ -144,9 +260,8 @@ export default function SendPage() {
             setIsDropdownOpen={setIsDropdownOpen}
             loadCustomTokens={loadCustomTokens}
           />
-        )}
-
-      </div>
-    </Layout>
+        </div>
+      )}
+    </div>
   );
 }

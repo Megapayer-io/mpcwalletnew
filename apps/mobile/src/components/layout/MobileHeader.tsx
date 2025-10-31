@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWalletStore } from '@/store/wallet';
 import { CustomIcons } from '@/components/icons/CustomIcons';
+import { useRouter } from 'next/navigation';
 
 interface MobileHeaderProps {
   title: string;
@@ -14,12 +15,14 @@ interface MobileHeaderProps {
 
 export const MobileHeader: React.FC<MobileHeaderProps> = ({ title, subtitle }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const { 
     address, 
     isUnlocked,
     currentAccount,
     accounts,
-    switchAccount
+    switchAccount,
+    lock
   } = useWalletStore();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -48,6 +51,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ title, subtitle }) =
   const handleAccountSwitch = (address: string) => {
     switchAccount(address);
     setShowAccountMenu(false);
+  };
+
+  const handleLock = () => {
+    lock();
+    router.push('/unlock');
   };
 
   const getAccountDisplayName = () => {
@@ -180,18 +188,21 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ title, subtitle }) =
             )}
           </div>
 
-          {/* Right side - Settings icon */}
+          {/* Right side - Lock/Unlock button */}
           <div className="flex-shrink-0">
             {isUnlocked && address ? (
-              <Link
-                href="/settings"
-                className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 dark:bg-gray-800/20 hover:scale-110 hover:shadow-md transition-all duration-300"
+              <motion.button
+                onClick={handleLock}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 dark:bg-gray-800/20 hover:shadow-md transition-all duration-300"
+                title="Lock Wallet"
               >
-                <CustomIcons.Settings className="w-6 h-6 text-gray-500" />
-              </Link>
+                <CustomIcons.Lock className="w-6 h-6 text-gray-500" />
+              </motion.button>
             ) : (
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 dark:bg-gray-800/20">
-                <CustomIcons.Shield className="w-6 h-6 text-gray-400" />
+                <CustomIcons.Lock className="w-6 h-6 text-gray-400" />
               </div>
             )}
           </div>

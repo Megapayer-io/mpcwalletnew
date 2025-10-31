@@ -179,9 +179,8 @@ export default function SettingsPage() {
         {
           name: 'Help & Support',
           description: 'Get help and support',
-          href: '#',
-          icon: CustomIcons.HelpCircle,
-          onClick: () => console.log('Help clicked')
+          href: '/help',
+          icon: CustomIcons.HelpCircle
         },
         {
           name: 'Lock Wallet',
@@ -422,6 +421,100 @@ export default function SettingsPage() {
             </motion.div>
           );
         })}
+
+        {/* Coming in 2.0.0 Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="megapayer-panel rounded-2xl border border-megapayer-border overflow-hidden"
+        >
+          <div className="px-4 py-3.5 flex items-center gap-3 border-b border-megapayer-border">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#FF7A4520]">
+              <CustomIcons.Zap className="w-3.5 h-3.5 text-[#FF7A45]" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-sm font-semibold font-heading text-megapayer-text">Coming in 2.0.0</h2>
+              <p className="text-xs font-body text-megapayer-muted mt-0.5">Exciting features on the way</p>
+            </div>
+          </div>
+          
+          <div className="divide-y divide-megapayer-border">
+            {/* Swap */}
+            <div className="flex items-center justify-between p-4 opacity-60">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#22E1FF15]">
+                  <CustomIcons.Swap className="w-4 h-4 text-[#22E1FF]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold font-heading text-megapayer-text truncate">
+                    Swap
+                  </h3>
+                  <p className="text-xs font-body text-megapayer-muted truncate mt-0.5">
+                    Exchange tokens instantly
+                  </p>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 bg-[#FF7A4520] text-[#FF7A45] rounded-full text-xs font-bold font-heading flex-shrink-0">
+                SOON
+              </span>
+            </div>
+
+            {/* P2P */}
+            <div className="flex items-center justify-between p-4 opacity-60">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#7C3AED15]">
+                  <CustomIcons.User className="w-4 h-4 text-[#7C3AED]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold font-heading text-megapayer-text truncate">
+                    P2P
+                  </h3>
+                  <p className="text-xs font-body text-megapayer-muted truncate mt-0.5">
+                    Peer-to-peer transactions
+                  </p>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 bg-[#FF7A4520] text-[#FF7A45] rounded-full text-xs font-bold font-heading flex-shrink-0">
+                SOON
+              </span>
+            </div>
+
+            {/* Buy with Card */}
+            <div className="flex items-center justify-between p-4 opacity-60">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#34D39915]">
+                  <CustomIcons.Wallet className="w-4 h-4 text-[#34D399]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold font-heading text-megapayer-text truncate">
+                    Buy with Card
+                  </h3>
+                  <p className="text-xs font-body text-megapayer-muted truncate mt-0.5">
+                    Purchase crypto with debit/credit card
+                  </p>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 bg-[#FF7A4520] text-[#FF7A45] rounded-full text-xs font-bold font-heading flex-shrink-0">
+                SOON
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Version Info */}
+      <div className="px-5 py-4 relative z-10">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="text-center"
+        >
+          <p className="text-xs font-body text-megapayer-muted">
+            Version <span className="font-semibold font-heading text-megapayer-text">1.0.0</span>
+          </p>
+        </motion.div>
       </div>
     </div>
   );

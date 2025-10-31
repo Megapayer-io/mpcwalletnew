@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
 import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav } from './MobileBottomNav';
+import { Loader } from '@/components/Loader';
 import { motion } from 'framer-motion';
 
 interface MobileLayoutProps {
@@ -70,17 +71,11 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
   // Show loading screen
   if (isLoading || !isInitialized) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative mx-auto mb-6 w-16 h-16">
-            <div className="w-16 h-16 rounded-lg bg-gray-900 dark:bg-white p-3 animate-pulse">
-              <img src="/megapayer-logo.svg" alt="Megapayer" className="w-full h-full dark:invert" />
-            </div>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Megapayer</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading your wallet...</p>
-        </div>
-      </div>
+      <Loader 
+        text="Loading your wallet..." 
+        size="lg" 
+        fullScreen 
+      />
     );
   }
 

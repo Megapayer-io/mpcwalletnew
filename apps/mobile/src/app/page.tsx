@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useWalletStore } from '@/store/wallet';
 import { CustomIcons } from '@/components/icons/CustomIcons';
+import { Loader } from '@/components/Loader';
 import { motion } from 'framer-motion';
 import { getTokenIcon } from '@/lib/tokenIconService';
 
@@ -185,12 +186,11 @@ export default function Dashboard() {
 
   if (!isInitialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">Initializing wallet...</p>
-        </div>
-      </div>
+      <Loader 
+        text="Initializing wallet..." 
+        size="lg" 
+        fullScreen 
+      />
     );
   }
 
@@ -463,11 +463,8 @@ export default function Dashboard() {
 
           {/* Loading State */}
           {isLoadingTokenBalances && customTokens.length > 0 && (
-            <div className="text-center py-4">
-              <div className="inline-flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-                <span>Loading token balances...</span>
-              </div>
+            <div className="flex items-center justify-center py-4">
+              <Loader text="Loading token balances..." size="sm" />
             </div>
           )}
 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Sora } from 'next/font/google';
 import { Providers } from '@/lib/providers';
 import DesktopLayout from '@/components/layout/DesktopLayout';
+import Script from 'next/script';
 import './globals.css';
 
 const inter = Inter({ 
@@ -28,6 +29,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <Script src="/tauri-preload.js" strategy="beforeInteractive" />
+      </head>
       <body className={`${inter.variable} ${sora.variable} font-sans megapayer-bg`}>
         <Providers>
           <DesktopLayout>

@@ -1,0 +1,74 @@
+{
+  "productName": "Megapayer Desktop",
+  "version": "1.0.0",
+  "identifier": "com.megapayer.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev:renderer",
+    "beforeBuildCommand": "npm run build:renderer",
+    "devUrl": "http://localhost:3001",
+    "frontendDist": "../out"
+  },
+  "app": {
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "Megapayer Desktop",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "center": true,
+        "decorations": true,
+        "alwaysOnTop": false,
+        "skipTaskbar": false,
+        "hiddenTitle": false,
+        "acceptFirstMouse": false,
+        "tabbingIdentifier": null,
+        "additionalBrowserArgs": "",
+        "userAgent": null,
+        "visible": true,
+        "maximized": false,
+        "shadow": true,
+        "transparent": false,
+        "trafficLightPosition": {
+          "x": 20,
+          "y": 20
+        }
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": false,
+      "endpoints": [],
+      "dialog": true,
+      "pubkey": ""
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Finance",
+    "shortDescription": "Secure Multi-Chain Crypto Wallet",
+    "longDescription": "Megapayer Desktop Wallet - A secure multi-chain cryptocurrency wallet",
+    "copyright": "© 2024 Megapayer",
+    "resources": [],
+    "externalBin": [],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
+  }
+}

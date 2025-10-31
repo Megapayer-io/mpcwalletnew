@@ -142,3 +142,7 @@ release/
 *.dmg
 *.deb
 *.rpm
+
+# Rust/Tauri build artifacts
+target/
+**/target/

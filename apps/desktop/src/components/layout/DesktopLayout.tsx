@@ -20,12 +20,12 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
     isUnlocked
   } = useWalletStore();
 
-  const [isElectron, setIsElectron] = useState(false);
+  const [isTauri, setIsTauri] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // Check if running in Electron
-    setIsElectron(typeof window !== 'undefined' && !!window.electronAPI);
+    // Check if running in Tauri
+    setIsTauri(typeof window !== 'undefined' && !!window.electronAPI);
     
     // Check if mobile (for warning)
     const checkMobile = () => {
@@ -40,8 +40,21 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
   }, []);
 
   useEffect(() => {
-    // Handle Electron menu events
-    if (isElectron && window.electronAPI) {
+    // Handle Tauri menu events
+    if (isTauri && window.electronAPI) {
+      // Type assertion to ensure all methods are available
+      const api = window.electronAPI as {
+        getAppVersion: () => Promise<string>;
+        showSaveDialog: (options: any) => Promise<any>;
+        showOpenDialog: (options: any) => Promise<any>;
+        showMessageBox: (options: any) => Promise<any>;
+        onMenuNewWallet: (callback: () => void) => void;
+        onMenuImportWallet: (callback: () => void) => void;
+        onMenuAbout: (callback: () => void) => void;
+        onMenuLearnMore: (callback: () => void) => void;
+        removeAllListeners: (channel: string) => void;
+      };
+      
       const handleNewWallet = () => {
         if (hasWallet) {
           router.push('/account');
@@ -58,18 +71,37 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
         }
       };
 
-      window.electronAPI.onMenuNewWallet(handleNewWallet);
-      window.electronAPI.onMenuImportWallet(handleImportWallet);
+      const handleAbout = () => {
+        // Show about dialog
+        api.showMessageBox({
+          type: 'info',
+          title: 'About Megapayer Desktop',
+          message: 'Megapayer Desktop Wallet',
+          detail: 'Version 1.0.0\nSecure Multi-Chain Crypto Wallet'
+        });
+      };
+
+      const handleLearnMore = () => {
+        // Open external link
+        window.open('https://megapayerwalletwhitepaper.vercel.app/', '_blank');
+      };
+
+      api.onMenuNewWallet(handleNewWallet);
+      api.onMenuImportWallet(handleImportWallet);
+      api.onMenuAbout(handleAbout);
+      api.onMenuLearnMore(handleLearnMore);
 
       return () => {
-        window.electronAPI.removeAllListeners('menu-new-wallet');
-        window.electronAPI.removeAllListeners('menu-import-wallet');
+        api.removeAllListeners('menu-new-wallet');
+        api.removeAllListeners('menu-import-wallet');
+        api.removeAllListeners('menu-about');
+        api.removeAllListeners('menu-learn-more');
       };
     }
-  }, [isElectron, hasWallet, router]);
+  }, [isTauri, hasWallet, router]);
 
-  // Show mobile warning if on mobile and not in Electron
-  if (isMobile && !isElectron) {
+  // Show mobile warning if on mobile and not in Tauri
+  if (isMobile && !isTauri) {
     return <MobileWarning />;
   }
 

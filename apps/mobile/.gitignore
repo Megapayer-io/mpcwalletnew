@@ -1,1 +1,38 @@
-.vercel
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Android
+android/app/build/
+android/.gradle/
+android/.idea/
+android/local.properties
+android/app/release/
+android/app/debug/
+*.apk
+*.aab
+*.keystore
+!keystore/*.keystore.example
+
+# Capacitor
+.capacitor/
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

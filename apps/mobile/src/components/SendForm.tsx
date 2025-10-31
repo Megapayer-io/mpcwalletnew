@@ -6,6 +6,7 @@ import { CustomIcons } from './icons/CustomIcons';
 import { PinProtection } from './PinProtection';
 import { generateFallbackIcon } from '@/lib/tokenIconService';
 import { motion, AnimatePresence } from 'framer-motion';
+import { startScanner, parseWalletAddress, parsePaymentRequest } from '@/lib/qrScanner';
 
 interface Token {
   address: string;
@@ -427,9 +428,32 @@ export function SendForm({
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
               <motion.button
                 type="button"
-                onClick={() => {
-                  // Scanner functionality will be implemented later
-                  console.log('Scanner clicked - to be implemented');
+                onClick={async () => {
+                  try {
+                    const result = await startScanner();
+                    if (result.success && result.text) {
+                      // Parse payment request or address
+                      const paymentRequest = parsePaymentRequest(result.text);
+                      if (paymentRequest) {
+                        setFormData(prev => ({
+                          ...prev,
+                          to: paymentRequest.address,
+                          amount: paymentRequest.amount || prev.amount
+                        }));
+                      } else {
+                        // Try plain address
+                        const address = parseWalletAddress(result.text);
+                        if (address) {
+                          setFormData(prev => ({
+                            ...prev,
+                            to: address
+                          }));
+                        }
+                      }
+                    }
+                  } catch (error) {
+                    console.error('QR scan error:', error);
+                  }
                 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}

@@ -113,7 +113,10 @@ export default function Dashboard() {
     try {
       for (const token of tokens) {
         try {
-          const tokenBalance = await getTokenBalance(token.address, token.decimals);
+          const tokenBalance = await getTokenBalance({ 
+            tokenAddress: token.address, 
+            decimals: token.decimals 
+          });
           balances[token.address] = tokenBalance;
           
           // Get USD value

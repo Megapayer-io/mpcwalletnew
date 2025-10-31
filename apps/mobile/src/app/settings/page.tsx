@@ -354,7 +354,9 @@ export default function SettingsPage() {
             >
               <div className="px-4 py-3.5 flex items-center gap-3 border-b border-megapayer-border">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${section.color}20` }}>
-                  <Icon className="w-3.5 h-3.5" style={{ color: section.color }} />
+                  <div style={{ color: section.color }}>
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
                 </div>
                 <h2 className="text-sm font-semibold font-heading text-megapayer-text">{section.title}</h2>
               </div>
@@ -376,7 +378,9 @@ export default function SettingsPage() {
                         >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${section.color}15` }}>
-                              <ItemIcon className="w-4 h-4" style={{ color: section.color }} />
+                              <div style={{ color: section.color }}>
+                                <ItemIcon className="w-4 h-4" />
+                              </div>
                             </div>
                             <div className="flex-1 min-w-0">
                               <h3 className={`text-sm font-semibold font-heading truncate ${
@@ -398,7 +402,9 @@ export default function SettingsPage() {
                         >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${section.color}15` }}>
-                              <ItemIcon className="w-4 h-4" style={{ color: section.color }} />
+                              <div style={{ color: section.color }}>
+                                <ItemIcon className="w-4 h-4" />
+                              </div>
                             </div>
                             <div className="flex-1 min-w-0 text-left">
                               <h3 className={`text-sm font-semibold font-heading truncate ${

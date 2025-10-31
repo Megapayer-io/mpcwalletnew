@@ -127,7 +127,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                   <Link
                     key={item.name}
                     href={item.href}
-                    onClick={() => setShowMobileMenu(false)}
                     className={`
                       group flex items-center ${isCollapsed ? 'justify-center px-2' : 'space-x-3 px-4'} py-2.5 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg
                       ${isActive(item.href)

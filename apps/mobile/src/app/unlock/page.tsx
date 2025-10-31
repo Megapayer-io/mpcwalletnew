@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
 import { CustomIcons } from '@/components/icons/CustomIcons';
 import { motion } from 'framer-motion';
+import { isBiometricAvailable, isBiometricEnabled, unlockWithBiometric, enableBiometric } from '@/lib/biometric';
+import { Capacitor } from '@capacitor/core';
 
 // Beautiful SVG Graphic for Unlock Page
 const UnlockIcon = () => (
@@ -127,6 +129,9 @@ export default function UnlockPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [isBiometricLoading, setIsBiometricLoading] = useState(false);
   
   const { 
     isInitialized, 
@@ -147,6 +152,47 @@ export default function UnlockPage() {
     }
   }, [isInitialized, hasWallet, isUnlocked, router]);
 
+  const handleBiometricUnlock = async () => {
+    setIsBiometricLoading(true);
+    setError('');
+
+    try {
+      const result = await unlockWithBiometric();
+      if (result.success && result.token) {
+        await unlock(result.token);
+        router.push('/');
+      } else {
+        setError(result.error || 'Biometric authentication failed');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Biometric authentication failed');
+    } finally {
+      setIsBiometricLoading(false);
+    }
+  };
+
+  // Check biometric availability
+  useEffect(() => {
+    const checkBiometric = async () => {
+      if (Capacitor.isNativePlatform()) {
+        const available = await isBiometricAvailable();
+        const enabled = await isBiometricEnabled();
+        setBiometricAvailable(available);
+        setBiometricEnabled(enabled);
+        
+        // Auto-unlock with biometric if enabled
+        if (available && enabled && hasWallet && !isUnlocked) {
+          handleBiometricUnlock();
+        }
+      }
+    };
+    
+    if (isInitialized && hasWallet && !isUnlocked) {
+      checkBiometric();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized, hasWallet, isUnlocked]);
+
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -160,6 +206,18 @@ export default function UnlockPage() {
 
     try {
       await unlock(password);
+      
+      // Enable biometric if available and not already enabled
+      if (biometricAvailable && !biometricEnabled) {
+        try {
+          await enableBiometric(password);
+          setBiometricEnabled(true);
+        } catch (bioError) {
+          // Silently fail - biometric enable is optional
+          console.log('Biometric enable skipped:', bioError);
+        }
+      }
+      
       router.push('/');
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Incorrect password');
@@ -307,10 +365,43 @@ export default function UnlockPage() {
             </motion.div>
           )}
 
-          {/* Unlock Button */}
+          {/* Biometric Unlock Button */}
+          {biometricAvailable && biometricEnabled && (
+            <motion.button
+              type="button"
+              onClick={handleBiometricUnlock}
+              disabled={isBiometricLoading || isLoading}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-4 megapayer-panel-soft border-2 border-megapayer-teal rounded-2xl font-bold font-heading transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mb-3"
+            >
+              {isBiometricLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-megapayer-teal"></div>
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <>
+                  <CustomIcons.Shield className="w-5 h-5 text-megapayer-teal" />
+                  <span className="text-megapayer-teal">Unlock with Biometric</span>
+                </>
+              )}
+            </motion.button>
+          )}
+
+          {/* Divider */}
+          {biometricAvailable && biometricEnabled && (
+            <div className="flex items-center gap-3 my-3">
+              <div className="flex-1 h-px bg-megapayer-border"></div>
+              <span className="text-xs font-body text-megapayer-muted">or</span>
+              <div className="flex-1 h-px bg-megapayer-border"></div>
+            </div>
+          )}
+
+          {/* Password Unlock Button */}
           <motion.button
             type="submit"
-            disabled={isLoading || !password.trim()}
+            disabled={isLoading || isBiometricLoading || !password.trim()}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full py-4 megapayer-btn-primary rounded-2xl font-bold font-heading shadow-megapayer transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

@@ -80,6 +80,12 @@ interface WalletStore {
   isLoadingTransactions: boolean;
   isTransactionScanning: boolean;
   
+  // UI state
+  sidebarCollapsed: boolean;
+  
+  // Account-specific mnemonics storage
+  accountMnemonics: Record<string, string>; // address -> mnemonic
+  
   securityEvents: any[];
   biometricAuth: any;
   sessionInfo: {
@@ -92,6 +98,10 @@ interface WalletStore {
   initialize: () => void;
   createWallet: () => Promise<{ mnemonic: string; address: string }>;
   importWallet: (mnemonic: string) => Promise<{ mnemonic: string; address: string }>;
+  getAccountSeedPhrase: (address: string) => string | null;
+  saveAccountMnemonics: () => void;
+  loadAccountMnemonics: () => Record<string, string>;
+  importAccountFromMnemonic: (mnemonic: string, name?: string) => Promise<Account>;
   lock: () => void;
   unlock: (password: string) => Promise<void>;
   saveKeystore: (mnemonic: string, password: string) => Promise<void>;
@@ -113,6 +123,7 @@ interface WalletStore {
   getTransactionHistory: (address: string, network: Network) => Promise<Transaction[]>;
   stopTransactionScanning: () => void;
   saveTransactionToHistory: (transaction: Transaction) => void;
+  migrateToNetworkSpecificStorage: () => void;
   loadTransactionHistory: () => void;
   saveLastKnownBalance: (address: string, balance: string, networkSymbol: string) => void;
   getLastKnownBalance: (address: string, networkSymbol: string) => string | null;
@@ -138,6 +149,12 @@ interface WalletStore {
   removeAccount: (address: string) => void;
   exportPrivateKey: (address: string) => string;
   clearCorruptedAccounts: () => void;
+  
+  // UI management
+  toggleSidebar: () => void;
+  
+  // Wallet management
+  resetWallet: () => void;
 }
 
 export const useWalletStore = create<WalletStore>((set, get) => ({
@@ -158,10 +175,16 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     nfts: [],
     isLoadingNfts: false,
     
-    // Transaction state
-    transactions: [],
-    isLoadingTransactions: false,
-    isTransactionScanning: false,
+  // Transaction state
+  transactions: [],
+  isLoadingTransactions: false,
+  isTransactionScanning: false,
+  
+  // UI state
+  sidebarCollapsed: false,
+  
+  // Account-specific mnemonics storage
+  accountMnemonics: {},
     
     securityEvents: [],
   biometricAuth: null,
@@ -188,8 +211,13 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       networks: wallet.listNetworks(),
     });
     
+    // Load account mnemonics from localStorage
+    get().loadAccountMnemonics();
+    
     // Load transaction history if wallet is unlocked
     if (wallet.isUnlocked() && wallet.getAddress()) {
+      // Migrate existing data to network-specific storage
+      get().migrateToNetworkSpecificStorage();
       get().loadTransactionHistory();
     }
   },
@@ -201,17 +229,146 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
+      // Use the original createWallet method but then lock it immediately
       const result = await wallet.createWallet();
+      
+      // Immediately lock the wallet after creation
+      wallet.lock();
+      
       set({
         hasWallet: true,
-        isUnlocked: true,
+        isUnlocked: false, // Explicitly keep it locked
         address: result.address,
         isLoading: false,
       });
+      
       return result;
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to create wallet',
+        isLoading: false 
+      });
+      throw error;
+    }
+  },
+
+  getAccountSeedPhrase: (address: string) => {
+    const { wallet, accountMnemonics } = get();
+    if (!wallet) return null;
+    
+    console.log('Getting seed phrase for address:', address);
+    console.log('Stored account mnemonics:', accountMnemonics);
+    console.log('Looking for:', address.toLowerCase());
+    
+    // Check if we have a stored mnemonic for this account
+    if (accountMnemonics[address.toLowerCase()]) {
+      console.log('Found stored mnemonic for account:', address);
+      return accountMnemonics[address.toLowerCase()];
+    }
+    
+    console.log('No stored mnemonic found, using master mnemonic');
+    // For accounts created from the master wallet, return the master mnemonic
+    try {
+      return wallet.getMnemonicPhrase();
+    } catch (error) {
+      console.error('Failed to get master mnemonic:', error);
+      return null;
+    }
+  },
+
+  saveAccountMnemonics: () => {
+    const { accountMnemonics } = get();
+    try {
+      console.log('Saving account mnemonics to localStorage:', accountMnemonics);
+      localStorage.setItem('mpc-wallet-account-mnemonics', JSON.stringify(accountMnemonics));
+      console.log('Account mnemonics saved successfully');
+    } catch (error) {
+      console.error('Failed to save account mnemonics:', error);
+    }
+  },
+
+  loadAccountMnemonics: () => {
+    try {
+      const stored = localStorage.getItem('mpc-wallet-account-mnemonics');
+      console.log('Loading account mnemonics from localStorage:', stored);
+      if (stored) {
+        const mnemonics = JSON.parse(stored);
+        console.log('Parsed account mnemonics:', mnemonics);
+        set({ accountMnemonics: mnemonics });
+        return mnemonics;
+      }
+    } catch (error) {
+      console.error('Failed to load account mnemonics:', error);
+    }
+    return {};
+  },
+
+  importAccountFromMnemonic: async (mnemonic: string, name?: string) => {
+    const { wallet } = get();
+    if (!wallet) throw new Error('Wallet not initialized');
+
+    set({ isLoading: true, error: null });
+    
+    try {
+      console.log('Store: Starting importAccountFromMnemonic');
+      
+      // Create a temporary wallet to derive the account and validate the mnemonic
+      const tempWallet = new EvmWallet();
+      await tempWallet.importFromMnemonic(mnemonic);
+      
+      // Get the derived account details
+      const derivedAccount = tempWallet.getCurrentAccount();
+      const derivedAddress = tempWallet.getAddress();
+      
+      if (!derivedAccount || !derivedAddress) {
+        throw new Error('Failed to derive account from mnemonic');
+      }
+      
+      // Check if account already exists
+      const existingAccount = wallet.getAccounts().find(acc => 
+        acc.address.toLowerCase() === derivedAddress.toLowerCase()
+      );
+      
+      if (existingAccount) {
+        throw new Error('Account already exists');
+      }
+      
+      // Import the account using the private key
+      const privateKey = tempWallet.getPrivateKey();
+      const newAccount = wallet.importAccount({
+        privateKey: privateKey,
+        name: name || `Imported Account ${wallet.getAccounts().length + 1}`
+      });
+      
+      console.log('Store: Account imported from mnemonic successfully:', newAccount);
+      
+      // Store the mnemonic for this account
+      const newAccountMnemonics = {
+        ...get().accountMnemonics,
+        [newAccount.address.toLowerCase()]: mnemonic
+      };
+      
+      console.log('Storing mnemonic for account:', newAccount.address.toLowerCase());
+      console.log('Mnemonic to store:', mnemonic);
+      console.log('Updated account mnemonics:', newAccountMnemonics);
+      
+      set({
+        accounts: wallet.getAccounts(),
+        currentAccount: wallet.getCurrentAccount(),
+        address: wallet.getAddress(),
+        accountMnemonics: newAccountMnemonics,
+        isLoading: false,
+      });
+      
+      // Save to localStorage
+      get().saveAccountMnemonics();
+      
+      console.log('Store: State updated after mnemonic account import');
+      return newAccount;
+    } catch (error) {
+      console.error('Store: Import account from mnemonic failed:', error);
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to import account from mnemonic',
         isLoading: false 
       });
       throw error;
@@ -225,15 +382,23 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
+      console.log('Store: Starting importWallet with mnemonic');
       const result = await wallet.importFromMnemonic(mnemonic);
+      console.log('Store: Wallet imported successfully:', result);
+      
       set({
         hasWallet: true,
-        isUnlocked: true,
+        isUnlocked: wallet.isUnlocked(), // Use the actual wallet state instead of forcing false
         address: result.address,
+        currentAccount: wallet.getCurrentAccount(),
+        accounts: wallet.getAccounts(),
         isLoading: false,
       });
+      
+      console.log('Store: State updated after wallet import, isUnlocked:', wallet.isUnlocked());
       return result;
     } catch (error) {
+      console.error('Store: Import wallet failed:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Failed to import wallet',
         isLoading: false 
@@ -579,13 +744,21 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
+      console.log('Store: Starting importAccount with params:', params);
       const newAccount = wallet.importAccount(params);
+      console.log('Store: Account imported successfully:', newAccount);
+      
       set({
         accounts: wallet.getAccounts(),
+        currentAccount: wallet.getCurrentAccount(),
+        address: wallet.getAddress(),
         isLoading: false,
       });
+      
+      console.log('Store: State updated after import');
       return newAccount;
     } catch (error) {
+      console.error('Store: Import account failed:', error);
       set({
         error: error instanceof Error ? error.message : 'Failed to import account',
         isLoading: false,
@@ -623,6 +796,75 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       currentAccount: wallet.getCurrentAccount() || null,
       address: wallet.getAddress() || null,
     });
+  },
+
+  // UI management
+  toggleSidebar: () => {
+    set((state) => ({ 
+      sidebarCollapsed: !state.sidebarCollapsed 
+    }));
+  },
+
+  // Wallet management
+  resetWallet: () => {
+    const { wallet } = get();
+    if (!wallet) return;
+
+    try {
+      // Clear all wallet data
+      wallet.clearStorage();
+      
+      // Clear localStorage data
+      localStorage.removeItem('mpc-wallet-state');
+      localStorage.removeItem('mpc-wallet-tokens');
+      localStorage.removeItem('mpc-wallet-transactions');
+      
+      // Clear all network-specific data
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('mpc-wallet-tokens-') || key.startsWith('mpc-wallet-transactions-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Re-initialize the wallet (create new instance)
+      const newWallet = new EvmWallet();
+      newWallet.loadState();
+      
+      // Reset store state with new wallet instance
+      set({
+        wallet: newWallet,
+        isInitialized: true,
+        hasWallet: false, // No keystore after reset
+        isUnlocked: false,
+        address: null,
+        currentAccount: null,
+        accounts: [],
+        currentNetwork: newWallet.getCurrentNetwork() || null,
+        networks: newWallet.listNetworks(),
+        balance: null,
+        isLoading: false,
+        error: null,
+        tokenPrices: {},
+        nfts: [],
+        isLoadingNfts: false,
+        transactions: [],
+        isLoadingTransactions: false,
+        isTransactionScanning: false,
+        sidebarCollapsed: false,
+        securityEvents: [],
+        biometricAuth: null,
+        sessionInfo: {
+          isActive: false,
+          duration: 0,
+          lastActivity: 0,
+        },
+      });
+      
+      console.log('✅ Wallet reset successfully');
+    } catch (error) {
+      console.error('Failed to reset wallet:', error);
+    }
   },
 
   getTokenPrice: async (symbol: string): Promise<number> => {
@@ -804,7 +1046,7 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   },
 
   saveTransactionToHistory: (transaction: Transaction) => {
-    const { wallet } = get();
+    const { wallet, currentNetwork } = get();
     if (!wallet) return;
 
     const address = wallet.getAddress();
@@ -812,7 +1054,8 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
 
     try {
       // Get existing transactions from localStorage
-      const storageKey = `mpc-wallet-transactions-${address}`;
+      const networkKey = currentNetwork?.chainId || 'unknown';
+      const storageKey = `mpc-wallet-transactions-${address}-${networkKey}`;
       const existingTransactions = JSON.parse(localStorage.getItem(storageKey) || '[]');
       
       // Check for duplicates based on hash, amount, and timestamp (within 5 minutes)
@@ -926,8 +1169,10 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   },
 
   clearFakeReceiveTransactions: (address: string) => {
+    const { currentNetwork } = get();
     try {
-      const storageKey = `mpc-wallet-transactions-${address}`;
+      const networkKey = currentNetwork?.chainId || 'unknown';
+      const storageKey = `mpc-wallet-transactions-${address}-${networkKey}`;
       const existingTransactions = JSON.parse(localStorage.getItem(storageKey) || '[]');
       
       // Remove transactions that start with "receive-" (fake receive transactions)
@@ -949,7 +1194,8 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     if (!currentNetwork) return;
 
     try {
-      const storageKey = `mpc-wallet-transactions-${address}`;
+      const networkKey = currentNetwork.chainId;
+      const storageKey = `mpc-wallet-transactions-${address}-${networkKey}`;
       const existingTransactions = JSON.parse(localStorage.getItem(storageKey) || '[]');
       
       let updatedCount = 0;
@@ -985,15 +1231,62 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     }
   },
 
+  // Migration function to move existing data to network-specific storage
+  migrateToNetworkSpecificStorage: () => {
+    const { wallet, currentNetwork } = get();
+    if (!wallet || !currentNetwork) return;
+
+    const address = wallet.getAddress();
+    if (!address) return;
+
+    try {
+      const networkKey = currentNetwork.chainId;
+      
+      // Migrate tokens
+      const oldTokenKey = 'mpc-wallet-tokens';
+      const newTokenKey = `mpc-wallet-tokens-${networkKey}`;
+      
+      const oldTokens = localStorage.getItem(oldTokenKey);
+      const existingNewTokens = localStorage.getItem(newTokenKey);
+      
+      if (oldTokens && !existingNewTokens) {
+        console.log(`🔄 Migrating tokens to network-specific storage for network ${networkKey}`);
+        localStorage.setItem(newTokenKey, oldTokens);
+        console.log(`✅ Migrated tokens to ${newTokenKey}`);
+      }
+      
+      // Migrate transactions
+      const oldTransactionKey = `mpc-wallet-transactions-${address}`;
+      const newTransactionKey = `mpc-wallet-transactions-${address}-${networkKey}`;
+      
+      const oldTransactions = localStorage.getItem(oldTransactionKey);
+      const existingNewTransactions = localStorage.getItem(newTransactionKey);
+      
+      if (oldTransactions && !existingNewTransactions) {
+        console.log(`🔄 Migrating transactions to network-specific storage for network ${networkKey}`);
+        localStorage.setItem(newTransactionKey, oldTransactions);
+        console.log(`✅ Migrated transactions to ${newTransactionKey}`);
+      }
+      
+      // Reload data after migration
+      get().loadTransactionHistory();
+      
+    } catch (error) {
+      console.error('Failed to migrate to network-specific storage:', error);
+    }
+  },
+
   loadTransactionHistory: () => {
-    const { wallet } = get();
+    const { wallet, currentNetwork } = get();
     if (!wallet) return;
 
     const address = wallet.getAddress();
     if (!address) return;
 
     try {
-      const storageKey = `mpc-wallet-transactions-${address}`;
+      // Use network-specific storage key
+      const networkKey = currentNetwork?.chainId || 'unknown';
+      const storageKey = `mpc-wallet-transactions-${address}-${networkKey}`;
       const savedTransactions = JSON.parse(localStorage.getItem(storageKey) || '[]');
       
       // Clean up duplicates when loading
@@ -1005,7 +1298,7 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       }
       
       set({ transactions: cleanedTransactions });
-      console.log(`Loaded ${cleanedTransactions.length} transactions from local history`);
+      console.log(`Loaded ${cleanedTransactions.length} transactions from local history for network ${networkKey}`);
     } catch (error) {
       console.error('Failed to load transaction history:', error);
       set({ transactions: [] });

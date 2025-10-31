@@ -2,50 +2,32 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWalletStore } from '@/store/wallet';
-import { Layout } from '@/components/layout/Layout';
-import { 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Globe, 
-  Image, 
-  History, 
-  TrendingUp,
-  Shield,
-  Wallet,
-  Activity,
-  Eye,
-  EyeOff,
-  Copy,
-  RefreshCw,
-  ExternalLink,
-  Send,
-  Zap,
-  Star,
-  Sparkles,
-  Plus,
-  DollarSign,
-  TrendingDown,
-  BarChart3,
-  PieChart,
-  CreditCard,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  Info
-} from 'lucide-react';
 import Link from 'next/link';
+import { useWalletStore } from '@/store/wallet';
+import { CustomIcons } from '@/components/icons/CustomIcons';
+import { motion } from 'framer-motion';
+import { getTokenIcon } from '@/lib/tokenIconService';
+
+interface Token {
+  address: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  balance?: string;
+  usdValue?: string;
+  logoUrl?: string;
+}
 
 export default function Dashboard() {
   const router = useRouter();
-  const [copied, setCopied] = useState(false);
+  const [showBalance, setShowBalance] = useState(true);
   const [usdBalance, setUsdBalance] = useState<string>('0.00');
   const [isLoadingUsd, setIsLoadingUsd] = useState(false);
-  const [showBalance, setShowBalance] = useState(true);
-  const [customTokens, setCustomTokens] = useState<any[]>([]);
-  const [portfolioValue, setPortfolioValue] = useState<string>('0.00');
-  const [portfolioChange, setPortfolioChange] = useState<number>(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [nativeTokenLogo, setNativeTokenLogo] = useState<string | null>(null);
+  const [customTokens, setCustomTokens] = useState<Token[]>([]);
+  const [tokenBalances, setTokenBalances] = useState<Record<string, string>>({});
+  const [tokenUsdValues, setTokenUsdValues] = useState<Record<string, string>>({});
+  const [isLoadingTokenBalances, setIsLoadingTokenBalances] = useState(false);
   
   const {
     isInitialized,
@@ -56,8 +38,8 @@ export default function Dashboard() {
     balance,
     getBalance,
     getUsdBalance,
+    getTokenBalance,
     isLoading,
-    error
   } = useWalletStore();
 
   useEffect(() => {
@@ -77,15 +59,111 @@ export default function Dashboard() {
       getBalance();
       loadCustomTokens();
     }
-  }, [isUnlocked, address, getBalance]);
+  }, [isUnlocked, address, getBalance, currentNetwork?.chainId]);
 
+  // Reload tokens when returning to dashboard (e.g., after adding token)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isUnlocked && address && currentNetwork?.chainId) {
+        loadCustomTokens();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [isUnlocked, address, currentNetwork?.chainId]);
+
+  // Load custom tokens from localStorage
   const loadCustomTokens = () => {
-    const storedTokens = localStorage.getItem('mpc-wallet-tokens');
-    if (storedTokens) {
-      setCustomTokens(JSON.parse(storedTokens));
+    if (!currentNetwork?.chainId) {
+      setCustomTokens([]);
+      return;
+    }
+    
+    try {
+      const networkKey = `mpc-wallet-tokens-${currentNetwork.chainId}`;
+      const storedTokens = localStorage.getItem(networkKey);
+      if (storedTokens) {
+        const tokens: Token[] = JSON.parse(storedTokens);
+        // Filter out native token (address === '') as we show it separately
+        const custom = tokens.filter(token => token.address !== '');
+        setCustomTokens(custom);
+        // Load balances for custom tokens
+        if (custom.length > 0) {
+          loadTokenBalances(custom);
+        }
+      } else {
+        setCustomTokens([]);
+      }
+    } catch (error) {
+      console.error('Failed to load custom tokens:', error);
+      setCustomTokens([]);
     }
   };
 
+  // Load balances for custom tokens
+  const loadTokenBalances = async (tokens: Token[]) => {
+    if (!address || !currentNetwork) return;
+    
+    setIsLoadingTokenBalances(true);
+    const balances: Record<string, string> = {};
+    const usdValues: Record<string, string> = {};
+    
+    try {
+      for (const token of tokens) {
+        try {
+          const tokenBalance = await getTokenBalance(token.address, token.decimals);
+          balances[token.address] = tokenBalance;
+          
+          // Get USD value
+          if (parseFloat(tokenBalance) > 0) {
+            try {
+              const usdValue = await getUsdBalance(tokenBalance, token.symbol);
+              usdValues[token.address] = usdValue !== 'Price unavailable' ? usdValue : '0.00';
+            } catch (error) {
+              usdValues[token.address] = '0.00';
+            }
+          } else {
+            usdValues[token.address] = '0.00';
+          }
+        } catch (error) {
+          console.error(`Failed to load balance for token ${token.symbol}:`, error);
+          balances[token.address] = '0';
+          usdValues[token.address] = '0.00';
+        }
+      }
+      
+      setTokenBalances(balances);
+      setTokenUsdValues(usdValues);
+    } catch (error) {
+      console.error('Failed to load token balances:', error);
+    } finally {
+      setIsLoadingTokenBalances(false);
+    }
+  };
+
+  // Fetch native token logo
+  useEffect(() => {
+    const fetchNativeTokenLogo = async () => {
+      if (currentNetwork?.symbol) {
+        try {
+          const iconResult = await getTokenIcon(currentNetwork.symbol, '');
+          if (iconResult.url) {
+            setNativeTokenLogo(iconResult.url);
+          } else {
+            setNativeTokenLogo(null);
+          }
+        } catch (error) {
+          console.error('Error fetching native token logo:', error);
+          setNativeTokenLogo(null);
+        }
+      }
+    };
+
+    fetchNativeTokenLogo();
+  }, [currentNetwork?.symbol]);
+
+  // Fetch USD balance
   useEffect(() => {
     const loadUsdBalance = async () => {
       if (balance && currentNetwork?.symbol) {
@@ -105,568 +183,310 @@ export default function Dashboard() {
     loadUsdBalance();
   }, [balance, currentNetwork?.symbol, getUsdBalance]);
 
-  // Update portfolio value when USD balance changes
-  useEffect(() => {
-    if (usdBalance && usdBalance !== 'Price unavailable') {
-      const currentUsdValue = parseFloat(usdBalance) || 0;
-      setPortfolioValue(currentUsdValue.toFixed(2));
-    }
-  }, [usdBalance]);
-
-  const handleCopyAddress = async () => {
-    if (address) {
-      try {
-        await navigator.clipboard.writeText(address);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch (error) {
-        console.error('Failed to copy address:', error);
-      }
-    }
-  };
-
-  const handleRefreshBalance = async () => {
-    if (isUnlocked && address) {
-      setIsRefreshing(true);
-      try {
-        await getBalance();
-        // Calculate real portfolio value from USD balance
-        const currentUsdValue = parseFloat(usdBalance) || 0;
-        setPortfolioValue(currentUsdValue.toFixed(2));
-        setPortfolioChange(0); // Reset to 0 for now, can be enhanced later
-      } catch (error) {
-        console.error('Failed to refresh balance:', error);
-      } finally {
-        setIsRefreshing(false);
-      }
-    }
-  };
-
   if (!isInitialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <div className="text-center animate-fade-in">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float">
-            <Wallet className="w-10 h-10 text-white" />
-          </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-semibold">Initializing wallet...</p>
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Initializing wallet...</p>
         </div>
       </div>
     );
   }
 
+  const formattedBalance = balance ? parseFloat(balance).toFixed(4) : '0.0000';
+  const displayBalance = showBalance ? formattedBalance : '••••••';
+  const displayUsd = showBalance 
+    ? (usdBalance !== 'Price unavailable' ? `$${usdBalance}` : '—')
+    : '••••••';
 
-  const quickActions = [
-    {
-      title: 'Send Funds',
-      description: 'Transfer tokens to any address',
-      href: '/send',
-      icon: ArrowUpRight,
-      color: 'from-red-500 to-pink-500',
-      bgColor: 'bg-gradient-to-br from-red-50 to-pink-50',
-      hoverColor: 'hover:from-red-100 hover:to-pink-100',
-      textColor: 'text-red-700',
-      iconColor: 'text-red-600'
-    },
-    {
-      title: 'Receive Funds',
-      description: 'Get your wallet address',
-      href: '/receive',
-      icon: ArrowDownLeft,
-      color: 'from-green-500 to-emerald-500',
-      bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50',
-      hoverColor: 'hover:from-green-100 hover:to-emerald-100',
-      textColor: 'text-green-700',
-      iconColor: 'text-green-600'
-    },
-    {
-      title: 'DApp Browser',
-      description: 'Explore Web3 applications',
-      href: '/browser',
-      icon: Globe,
-      color: 'from-purple-500 to-indigo-500',
-      bgColor: 'bg-gradient-to-br from-purple-50 to-indigo-50',
-      hoverColor: 'hover:from-purple-100 hover:to-indigo-100',
-      textColor: 'text-purple-700',
-      iconColor: 'text-purple-600'
-    },
-    {
-      title: 'View NFTs',
-      description: 'Manage your NFT collection',
-      href: '/nfts',
-      icon: Image,
-      color: 'from-pink-500 to-rose-500',
-      bgColor: 'bg-gradient-to-br from-pink-50 to-rose-50',
-      hoverColor: 'hover:from-pink-100 hover:to-rose-100',
-      textColor: 'text-pink-700',
-      iconColor: 'text-pink-600'
-    }
-  ];
-
-  const stats = [
-    {
-      title: 'Total Balance',
-      value: showBalance ? (balance ? parseFloat(balance).toFixed(4) : '0.0000') : '••••••',
-      subtitle: currentNetwork?.symbol || 'ETH',
-      usdValue: showBalance ? (usdBalance !== 'Price unavailable' ? `≈ $${usdBalance}` : 'Price unavailable') : '••••••',
-      icon: Wallet,
-      color: 'text-blue-600',
-      bgColor: 'bg-gradient-to-br from-blue-50 to-blue-100',
-      gradient: 'from-blue-500 to-blue-600'
-    },
-    {
-      title: 'Network',
-      value: currentNetwork?.name || 'Not Connected',
-      subtitle: 'Active Network',
-      icon: Activity,
-      color: 'text-green-600',
-      bgColor: 'bg-gradient-to-br from-green-50 to-green-100',
-      gradient: 'from-green-500 to-green-600'
-    },
-    {
-      title: 'Security',
-      value: isUnlocked ? 'Unlocked' : 'Locked',
-      subtitle: 'Wallet Status',
-      icon: Shield,
-      color: isUnlocked ? 'text-green-600' : 'text-red-600',
-      bgColor: isUnlocked ? 'bg-gradient-to-br from-green-50 to-green-100' : 'bg-gradient-to-br from-red-50 to-red-100',
-      gradient: isUnlocked ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'
-    }
-  ];
-
-        return (
-          <Layout title="Dashboard" subtitle="Professional Web3 Portfolio Management">
-            <div className="space-y-8">
-              {/* Welcome Header */}
-              <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white relative overflow-hidden">
-                <div className="absolute inset-0 bg-black/10"></div>
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
-                      <p className="text-blue-100 text-lg">Your Web3 portfolio overview</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-blue-100 text-sm mb-1">Portfolio Value</p>
-                      <p 
-                        className="text-4xl font-bold cursor-pointer hover:scale-105 transition-transform duration-200"
-                        onClick={handleRefreshBalance}
-                        title="Click to refresh portfolio value"
-                      >
-                        {showBalance ? `$${portfolioValue}` : '••••••'}
-                      </p>
-                      <div className="flex items-center justify-end gap-1 mt-1">
-                        {portfolioChange > 0 ? (
-                          <TrendingUp className="w-4 h-4 text-green-300" />
-                        ) : (
-                          <TrendingDown className="w-4 h-4 text-red-300" />
-                        )}
-                        <span className={`text-sm font-medium ${portfolioChange > 0 ? 'text-green-300' : 'text-red-300'}`}>
-                          {showBalance ? `${portfolioChange > 0 ? '+' : ''}${portfolioChange}%` : '••••'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full"></div>
-                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/5 rounded-full"></div>
+  return (
+    <div className="min-h-screen bg-white dark:bg-gray-950 pb-24">
+      {/* Premium Balance Card - Beautiful Gradient with Icon Colors */}
+      <div className="px-5 pt-6 pb-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+          className="bg-gradient-to-br from-red-50 via-emerald-50 via-blue-50 to-purple-50 dark:from-red-950/20 dark:via-emerald-950/20 dark:via-blue-950/20 dark:to-purple-950/20 rounded-3xl p-6 shadow-xl border border-red-200/30 dark:border-purple-800/30 relative overflow-hidden"
+        >
+          {/* Beautiful Pattern Overlay */}
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `radial-gradient(circle at 20% 30%, rgba(239, 68, 68, 0.1) 0%, transparent 50%),
+                               radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                               radial-gradient(circle at 40% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                               radial-gradient(circle at 70% 20%, rgba(168, 85, 247, 0.1) 0%, transparent 50%)`,
+            }} />
+          </div>
+          
+          {/* Subtle shimmer effect */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" style={{
+              animation: 'shimmer 3s infinite'
+            }} />
+          </div>
+          
+          {/* Network Indicator */}
+          {currentNetwork && (
+            <div className="relative mb-6 z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 shadow-sm">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.6)]" />
+                <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                  {currentNetwork.name}
+                </span>
               </div>
+            </div>
+          )}
 
-              {/* Main Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                  {
-                    title: 'Total Balance',
-                    value: showBalance ? (balance ? parseFloat(balance).toFixed(4) : '0.0000') : '••••••',
-                    subtitle: currentNetwork?.symbol || 'ETH',
-                    usdValue: showBalance ? (usdBalance !== 'Price unavailable' ? `≈ $${usdBalance}` : 'Price unavailable') : '••••••',
-                    icon: Wallet,
-                    color: 'from-blue-500 to-blue-600',
-                    bgColor: 'from-blue-50 to-blue-100',
-                    iconColor: 'text-blue-600',
-                    change: '+2.4%'
-                  },
-                  {
-                    title: 'Active Network',
-                    value: currentNetwork?.name || 'Not Connected',
-                    subtitle: `Chain ID: ${currentNetwork?.chainId || 'N/A'}`,
-                    icon: Activity,
-                    color: 'from-green-500 to-green-600',
-                    bgColor: 'from-green-50 to-green-100',
-                    iconColor: 'text-green-600',
-                    change: 'Connected'
-                  },
-                  {
-                    title: 'Security Status',
-                    value: isUnlocked ? 'Secured' : 'Locked',
-                    subtitle: isUnlocked ? 'Wallet Unlocked' : 'Wallet Locked',
-                    icon: Shield,
-                    color: isUnlocked ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600',
-                    bgColor: isUnlocked ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100',
-                    iconColor: isUnlocked ? 'text-green-600' : 'text-red-600',
-                    change: isUnlocked ? 'Active' : 'Inactive'
-                  },
-                  {
-                    title: 'Custom Tokens',
-                    value: customTokens.length.toString(),
-                    subtitle: 'ERC-20 Tokens',
-                    icon: Star,
-                    color: 'from-purple-500 to-purple-600',
-                    bgColor: 'from-purple-50 to-purple-100',
-                    iconColor: 'text-purple-600',
-                    change: '+1 today'
-                  }
-                ].map((stat, index) => {
-                  const Icon = stat.icon;
-                  const handleCardClick = () => {
-                    switch (index) {
-                      case 0: // Total Balance - refresh balance
-                        handleRefreshBalance();
-                        break;
-                      case 1: // Active Network - go to networks page
-                        router.push('/networks');
-                        break;
-                      case 2: // Security Status - go to account management
-                        router.push('/account');
-                        break;
-                      case 3: // Custom Tokens - go to tokens page
-                        router.push('/tokens');
-                        break;
-                    }
-                  };
-                  
-                  return (
-                    <div 
-                      key={index} 
-                      onClick={handleCardClick}
-                      className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-6 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 animate-fade-in-up group cursor-pointer"
-                      style={{ animationDelay: `${index * 100}ms` }}
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className={`w-12 h-12 bg-gradient-to-br ${stat.bgColor} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                          <Icon className={`w-6 h-6 ${stat.iconColor}`} />
-                        </div>
-                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                          {stat.change}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-500 mb-1">{stat.title}</p>
-                        <p className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</p>
-                        <p className="text-sm text-gray-600">{stat.subtitle}</p>
-                        {stat.usdValue && (
-                          <p className="text-sm text-gray-500 mt-1">{stat.usdValue}</p>
-                        )}
-                      </div>
-                      <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <p className="text-xs text-blue-600 font-medium">
-                          {index === 0 ? 'Click to refresh' : 
-                           index === 1 ? 'Click to manage networks' :
-                           index === 2 ? 'Click to manage account' :
-                           'Click to manage tokens'}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Action Bar */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-6 animate-fade-in-up">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={handleRefreshBalance}
-                    disabled={isRefreshing}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all duration-300 hover:scale-105"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-                  </button>
+          {/* Balance Display */}
+          <div className="relative z-10">
+            <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-3 tracking-wider uppercase">Total Balance</p>
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">
+                    {displayUsd}
+                  </h1>
                   <button
                     onClick={() => setShowBalance(!showBalance)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300 hover:scale-105"
+                    className="p-1.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-all rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 backdrop-blur-sm"
+                    aria-label={showBalance ? 'Hide balance' : 'Show balance'}
                   >
-                    {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    <span className="font-medium">{showBalance ? 'Hide' : 'Show'} Balance</span>
+                    {showBalance ? (
+                      <CustomIcons.Eye className="w-4 h-4" />
+                    ) : (
+                      <CustomIcons.EyeOff className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Clock className="w-4 h-4" />
-                  <span>Last updated: {new Date().toLocaleTimeString()}</span>
-                </div>
+                <p className="text-lg font-semibold text-gray-700 dark:text-gray-200">
+                  {displayBalance} {currentNetwork?.symbol || 'ETH'}
+                </p>
               </div>
+              <button
+                onClick={() => getBalance()}
+                disabled={isLoading}
+                className="p-2.5 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-900 border border-gray-300/50 dark:border-gray-700/50 transition-all disabled:opacity-50 shadow-sm"
+                aria-label="Refresh balance"
+              >
+                <CustomIcons.Refresh className={`w-4 h-4 text-gray-700 dark:text-gray-300 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
-              {/* Quick Actions */}
-              <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 animate-fade-in-up">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <Zap className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900">Quick Actions</h3>
-                      <p className="text-gray-600">Access your most used features</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {quickActions.map((action, index) => {
-                    const Icon = action.icon;
-                    return (
-                      <Link
-                        key={index}
-                        href={action.href}
-                        className={`${action.bgColor} ${action.hoverColor} rounded-2xl p-6 transition-all duration-300 hover:shadow-xl group hover:-translate-y-1 animate-fade-in-up border border-gray-200/50`}
-                        style={{ animationDelay: `${index * 100}ms` }}
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <div className={`w-12 h-12 ${action.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                            <Icon className={`w-6 h-6 ${action.iconColor}`} />
-                          </div>
-                          <ArrowUpRight className={`w-5 h-5 ${action.iconColor} opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1`} />
-                        </div>
-                        <h4 className={`font-bold ${action.textColor} mb-2 text-lg`}>{action.title}</h4>
-                        <p className="text-sm text-gray-600 font-medium">{action.description}</p>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
+      {/* Premium Action Buttons - Single Row with Beautiful Small Icons */}
+      <div className="px-5 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="flex items-center gap-2"
+        >
+          {/* Send Button */}
+          <Link
+            href="/send"
+            className="flex-1 group flex flex-col items-center bg-white dark:bg-gray-900 rounded-xl p-3 shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-800 transition-all duration-300 hover:scale-[1.02]"
+          >
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-950/20 flex items-center justify-center mb-1.5 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm">
+              <CustomIcons.SendArrow className="w-4 h-4 text-red-600 dark:text-red-400" />
+            </div>
+            <h3 className="text-[10px] font-semibold text-gray-700 dark:text-gray-300">Send</h3>
+          </Link>
 
-              {/* Portfolio Section */}
-              <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 animate-fade-in-up">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <PieChart className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900">Portfolio</h3>
-                      <p className="text-gray-600">Your token holdings and balances</p>
-                    </div>
-                  </div>
-                  <Link
-                    href="/tokens"
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg"
-                  >
-                    <Plus className="w-5 h-5" />
-                    <span className="font-semibold">Add Token</span>
-                  </Link>
-                </div>
-                
-                <div className="space-y-4">
-                  {/* Native Token */}
-                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200/50 hover:shadow-lg transition-all duration-300">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                        {currentNetwork?.symbol?.charAt(0) || 'E'}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-900 text-lg">{currentNetwork?.symbol || 'ETH'}</h4>
-                        <p className="text-gray-600">{currentNetwork?.name || 'Ethereum'}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900 text-lg">
-                        {showBalance ? (balance ? parseFloat(balance).toFixed(4) : '0.0000') : '••••••'}
-                      </p>
-                      <p className="text-gray-600">
-                        {showBalance ? (usdBalance !== 'Price unavailable' ? `≈ $${usdBalance}` : 'Price unavailable') : '••••••'}
-                      </p>
-                    </div>
-                  </div>
+          {/* Receive Button */}
+          <Link
+            href="/receive"
+            className="flex-1 group flex flex-col items-center bg-white dark:bg-gray-900 rounded-xl p-3 shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-800 transition-all duration-300 hover:scale-[1.02]"
+          >
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/40 dark:to-emerald-950/20 flex items-center justify-center mb-1.5 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm">
+              <CustomIcons.ReceiveQR className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h3 className="text-[10px] font-semibold text-gray-700 dark:text-gray-300">Receive</h3>
+          </Link>
 
-                  {/* Custom Tokens */}
-                  {customTokens.length > 0 ? (
-                    customTokens.map((token, index) => (
-                      <div key={token.address} className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-all duration-300 hover:shadow-lg">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                            {token.symbol.charAt(0)}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-gray-900 text-lg">{token.symbol}</h4>
-                            <p className="text-gray-600">{token.name}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-gray-900 text-lg">0.0000</p>
-                          <p className="text-gray-600">$0.00</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-300">
-                      <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                        <Zap className="w-10 h-10 text-gray-400" />
-                      </div>
-                      <h4 className="text-xl font-bold text-gray-900 mb-3">No Custom Tokens</h4>
-                      <p className="text-gray-600 mb-6 max-w-md mx-auto">Add custom tokens to track your complete portfolio and get a comprehensive view of your holdings.</p>
-                      <Link
-                        href="/tokens"
-                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
-                      >
-                        <Plus className="w-5 h-5 mr-2" />
-                        Add Your First Token
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </div>
+          {/* Buy Button - Disabled */}
+          <div className="flex-1 group flex flex-col items-center bg-white dark:bg-gray-900 rounded-xl p-3 shadow-sm border border-gray-200 dark:border-gray-800 opacity-60 cursor-not-allowed relative">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-950/20 flex items-center justify-center mb-1.5 shadow-sm">
+              <CustomIcons.BuyBag className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-[10px] font-semibold text-gray-500 dark:text-gray-500">Buy</h3>
+            <div className="absolute -top-0.5 -right-0.5">
+              <span className="px-1 py-0.5 text-[8px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 rounded-full border border-blue-200 dark:border-blue-800">SOON</span>
+            </div>
+          </div>
 
-              {/* Wallet Information */}
-              <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 animate-fade-in-up">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-gray-500 to-gray-600 rounded-2xl flex items-center justify-center shadow-lg">
-                      <Wallet className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900">Wallet Information</h3>
-                      <p className="text-gray-600">Your wallet details and network status</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-green-600">Connected</span>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Wallet Address
-                      </label>
-                      <div className="flex items-center space-x-3">
-                        <span className="font-mono text-sm bg-gray-100/50 px-4 py-3 rounded-xl flex-1 border border-gray-200/50">
-                          {address || 'No wallet connected'}
-                        </span>
-                        {address && (
-                          <button
-                            onClick={handleCopyAddress}
-                            className="p-3 text-gray-400 hover:text-gray-600 transition-all duration-300 hover:scale-110 bg-white/50 backdrop-blur-sm rounded-xl border border-gray-200/50"
-                            title="Copy address"
-                          >
-                            {copied ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </div>
+          {/* Swap Button - Disabled */}
+          <div className="flex-1 group flex flex-col items-center bg-white dark:bg-gray-900 rounded-xl p-3 shadow-sm border border-gray-200 dark:border-gray-800 opacity-60 cursor-not-allowed relative">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/40 dark:to-purple-950/20 flex items-center justify-center mb-1.5 shadow-sm">
+              <CustomIcons.SwapArrows className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            </div>
+            <h3 className="text-[10px] font-semibold text-gray-500 dark:text-gray-500">Swap</h3>
+            <div className="absolute -top-0.5 -right-0.5">
+              <span className="px-1 py-0.5 text-[8px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30 rounded-full border border-purple-200 dark:border-purple-800">SOON</span>
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Network Status
-                      </label>
-                      <div className="flex items-center space-x-3">
-                        <span className="px-4 py-3 bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 text-sm rounded-xl font-semibold border border-green-200/50">
-                          {currentNetwork?.name || 'Not Connected'}
-                        </span>
-                        <span className="text-sm text-gray-500 font-medium">
-                          Chain ID: {currentNetwork?.chainId || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+      {/* Token List with Add Button */}
+      <div className="px-5">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="space-y-2"
+        >
+          {/* Header with Add Token Button */}
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tokens</h3>
+            <Link
+              href="/tokens"
+              className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-all"
+              title="Add Custom Token"
+            >
+              <CustomIcons.Plus className="w-4 h-4 text-blue-500" />
+            </Link>
+          </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Security Status
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isUnlocked ? 'bg-green-100' : 'bg-red-100'}`}>
-                          <Shield className={`w-6 h-6 ${isUnlocked ? 'text-green-600' : 'text-red-600'}`} />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{isUnlocked ? 'Wallet Secured' : 'Wallet Locked'}</p>
-                          <p className="text-sm text-gray-600">{isUnlocked ? 'All features available' : 'Please unlock to continue'}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {currentNetwork?.blockExplorer && address && (
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-3">
-                          Block Explorer
-                        </label>
-                        <a
-                          href={`${currentNetwork.blockExplorer}/address/${address}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-all duration-300 font-medium"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          <span>View on Explorer</span>
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-red-600" />
-                      <p className="text-sm text-red-600 font-medium">{error}</p>
-                    </div>
+          {/* Native Token */}
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
+                {nativeTokenLogo ? (
+                  <img
+                    src={nativeTokenLogo}
+                    alt={`${currentNetwork?.symbol} logo`}
+                    className="w-12 h-12 object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-700 dark:from-blue-500 dark:to-purple-600 flex items-center justify-center rounded-xl shadow-sm"><span class="text-white font-bold text-sm">${currentNetwork?.symbol?.charAt(0) || 'E'}</span></div>`;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-700 dark:from-blue-500 dark:to-purple-600 flex items-center justify-center rounded-xl shadow-sm">
+                    <span className="text-white font-bold text-sm">
+                      {currentNetwork?.symbol?.charAt(0) || 'E'}
+                    </span>
                   </div>
                 )}
               </div>
-
-              {/* Recent Activity */}
-              <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 animate-fade-in-up">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <BarChart3 className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900">Recent Activity</h3>
-                      <p className="text-gray-600">Your latest transactions and interactions</p>
-                    </div>
-                  </div>
-                  <Link
-                    href="/history"
-                    className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-700 transition-colors duration-300 font-semibold"
-                  >
-                    <span>View All</span>
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Link>
-                </div>
-                
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <History className="w-10 h-10 text-gray-400" />
-                  </div>
-                  <h4 className="text-xl font-bold text-gray-900 mb-3">No Recent Activity</h4>
-                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    Your transaction history and activity will appear here once you start using your wallet.
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-900 dark:text-white text-sm">
+                  {currentNetwork?.symbol || 'ETH'}
+                </p>
+                {currentNetwork?.name && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {currentNetwork.name}
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link
-                      href="/send"
-                      className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
-                    >
-                      <Send className="w-5 h-5 mr-2" />
-                      Send Transaction
-                    </Link>
-                    <Link
-                      href="/receive"
-                      className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
-                    >
-                      <ArrowDownLeft className="w-5 h-5 mr-2" />
-                      Receive Funds
-                    </Link>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
-          </Layout>
-        );
-      }
+            <div className="text-right ml-3 flex-shrink-0">
+              <p className="font-bold text-gray-900 dark:text-white text-sm">
+                {displayBalance}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                {displayUsd !== '••••••' && displayUsd !== '—' ? displayUsd : '$0.00'}
+              </p>
+            </div>
+          </div>
+
+          {/* Custom Tokens */}
+          {customTokens.map((token) => {
+            const tokenBalance = tokenBalances[token.address] || '0';
+            const tokenUsd = tokenUsdValues[token.address] || '0.00';
+            const displayTokenBalance = showBalance 
+              ? (parseFloat(tokenBalance) > 0 ? parseFloat(tokenBalance).toFixed(4) : '0')
+              : '••••••';
+            // Always show $0.00 instead of dash when balance is zero or usd is 0.00
+            const displayTokenUsd = showBalance
+              ? (tokenUsd && tokenUsd !== 'Price unavailable' && parseFloat(tokenUsd) > 0 
+                  ? `$${parseFloat(tokenUsd).toFixed(2)}` 
+                  : '$0.00')
+              : '••••••';
+            
+            return (
+              <div key={token.address} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-all duration-300">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
+                    {token.logoUrl ? (
+                      <img
+                        src={token.logoUrl}
+                        alt={`${token.symbol} logo`}
+                        className="w-12 h-12 object-contain"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `<div class="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-700 dark:from-blue-500 dark:to-purple-600 flex items-center justify-center rounded-xl shadow-sm"><span class="text-white font-bold text-sm">${token.symbol.charAt(0) || 'T'}</span></div>`;
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-700 dark:from-blue-500 dark:to-purple-600 flex items-center justify-center rounded-xl shadow-sm">
+                        <span className="text-white font-bold text-sm">
+                          {token.symbol.charAt(0) || 'T'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-900 dark:text-white text-sm truncate">
+                      {token.symbol}
+                    </p>
+                    {token.name && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {token.name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right ml-3 flex-shrink-0">
+                  <p className="font-bold text-gray-900 dark:text-white text-sm">
+                    {displayTokenBalance}
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    {displayTokenUsd}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Loading State */}
+          {isLoadingTokenBalances && customTokens.length > 0 && (
+            <div className="text-center py-4">
+              <div className="inline-flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+                <span>Loading token balances...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Empty State - Only show if no custom tokens */}
+          {customTokens.length === 0 && !isLoadingTokenBalances && (
+            <Link
+              href="/tokens"
+              className="flex items-center justify-center gap-2 p-4 rounded-xl bg-white dark:bg-gray-900 border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all"
+            >
+              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center">
+                <CustomIcons.Plus className="w-4 h-4 text-blue-500" />
+              </div>
+              <p className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
+                Add Custom Token
+              </p>
+            </Link>
+          )}
+        </motion.div>
+      </div>
+    </div>
+  );
+}

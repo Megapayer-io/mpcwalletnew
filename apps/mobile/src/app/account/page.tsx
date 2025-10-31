@@ -5,28 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
 import { Layout } from '@/components/layout/Layout';
 import { PinProtection } from '@/components/PinProtection';
-import { 
-  User, 
-  Key, 
-  Download, 
-  Upload, 
-  Shield, 
-  Copy, 
-  Check, 
-  AlertCircle,
-  Eye,
-  EyeOff,
-  Trash2,
-  RefreshCw,
-  Plus,
-  Wallet
-} from 'lucide-react';
-import { motion } from 'framer-motion';
+import { CustomIcons } from '@/components/icons/CustomIcons';
 
 export default function AccountPage() {
   const router = useRouter();
   const {
     address,
+    isInitialized,
     isUnlocked,
     currentNetwork,
     balance,
@@ -40,6 +25,8 @@ export default function AccountPage() {
     createAccount,
     importAccount,
     importWallet,
+    importAccountFromMnemonic,
+    getAccountSeedPhrase,
     removeAccount,
     exportPrivateKey,
     clearError,
@@ -63,12 +50,19 @@ export default function AccountPage() {
   const [showPrivateKeyModal, setShowPrivateKeyModal] = useState<string | null>(null);
   const [accountError, setAccountError] = useState('');
 
+  // Reset seed phrase visibility when account changes
+  useEffect(() => {
+    console.log('Account changed, resetting seed phrase visibility. Current account:', currentAccount?.address);
+    setShowSeedPhrase(false);
+  }, [currentAccount?.address]);
+
   // Redirect to unlock page if wallet is locked
   useEffect(() => {
-    if (!isUnlocked) {
+    // Only redirect if wallet is initialized and locked
+    if (isInitialized && !isUnlocked) {
       router.push('/unlock');
     }
-  }, [isUnlocked, router]);
+  }, [isInitialized, isUnlocked, router]);
 
   const handleCopy = async (text: string, type: string) => {
     try {
@@ -84,16 +78,16 @@ export default function AccountPage() {
     if (wallet && isUnlocked) {
       try {
         // Check if methods exist before calling them
-        if (typeof wallet.getPrivateKey !== 'function' || typeof wallet.getMnemonicPhrase !== 'function') {
+        if (typeof wallet.getPrivateKey !== 'function') {
           alert('Wallet export methods not available. Please try refreshing the page.');
           return;
         }
 
         const privateKey = wallet.getPrivateKey();
-        const mnemonic = wallet.getMnemonicPhrase();
+        const mnemonic = getAccountSeedPhrase(currentAccount?.address || '') || 'Not available';
         
         const exportData = {
-          address: address,
+          address: currentAccount?.address || address,
           privateKey: privateKey,
           mnemonic: mnemonic,
           network: currentNetwork?.name,
@@ -114,7 +108,6 @@ export default function AccountPage() {
       }
     }
   };
-
 
   const handleDeleteWallet = () => {
     if (window.confirm('Are you sure you want to delete this wallet? This action cannot be undone.')) {
@@ -171,29 +164,53 @@ export default function AccountPage() {
         return;
       }
 
+      console.log('Starting import process:', importAccountData.importType);
+
       if (importAccountData.importType === 'privateKey') {
         // Import individual account with private key
+        console.log('Importing private key account...');
         const newAccount = await importAccount({
           privateKey: importAccountData.privateKey.trim(),
           name: importAccountData.name || 'Imported Account'
         });
         
+        console.log('Private key account imported successfully:', newAccount);
+        
         // Switch to the new account
         switchAccount(newAccount.address);
       } else if (importAccountData.importType === 'mnemonic') {
-        // Import wallet with mnemonic (this will replace the current wallet)
-        await importWallet(importAccountData.privateKey.trim());
+        // Import account from mnemonic (adds as new account, preserves existing accounts)
+        console.log('Importing account from mnemonic...');
+        const newAccount = await importAccountFromMnemonic(
+          importAccountData.privateKey.trim(),
+          importAccountData.name || 'Imported Account'
+        );
+        console.log('Account imported successfully from mnemonic:', newAccount);
+        
+        // Switch to the new account
+        switchAccount(newAccount.address);
       } else if (importAccountData.importType === 'backup') {
-        // Handle backup file import
-        // For now, treat as mnemonic
-        await importWallet(importAccountData.privateKey.trim());
+        // Handle backup file import - treat as mnemonic import
+        console.log('Importing account from backup...');
+        const newAccount = await importAccountFromMnemonic(
+          importAccountData.privateKey.trim(),
+          importAccountData.name || 'Imported Account'
+        );
+        console.log('Account imported successfully from backup:', newAccount);
+        
+        // Switch to the new account
+        switchAccount(newAccount.address);
       }
       
+      // Only close modal and reset data if import was successful
       setImportAccountData({ privateKey: '', name: '', importType: 'privateKey' });
       setShowImportAccount(false);
       
     } catch (error) {
-      setAccountError(error instanceof Error ? error.message : 'Failed to import account');
+      console.error('Import failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to import account';
+      setAccountError(errorMessage);
+      // Don't close the modal on error so user can see the error message
     }
   };
 
@@ -260,14 +277,22 @@ export default function AccountPage() {
   };
 
   // Show loading while redirecting
-  if (!isUnlocked) {
+  if (!isInitialized || !isUnlocked) {
     return (
-      <Layout title="Account Management" subtitle="Manage your wallet account and settings">
+      <Layout title="Account Management">
         <div className="max-w-2xl mx-auto text-center py-12">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Redirecting to unlock page...</h1>
-          <p className="text-gray-600">
-            Please wait while we redirect you to unlock your wallet.
+          <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
+            <CustomIcons.User className="w-10 h-10 text-white" />
+          </div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-megapayer-teal mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-megapayer-text mb-2">
+            {!isInitialized ? 'Initializing wallet...' : 'Redirecting to unlock page...'}
+          </h1>
+          <p className="text-megapayer-muted">
+            {!isInitialized 
+              ? 'Please wait while we initialize your wallet.' 
+              : 'Please wait while we redirect you to unlock your wallet.'
+            }
           </p>
         </div>
       </Layout>
@@ -275,313 +300,360 @@ export default function AccountPage() {
   }
 
   return (
-    <Layout title="Account Management" subtitle="Manage your wallet account and security settings">
-      <div className="space-y-8 animate-fade-in-up">
+    <Layout title="Account Management">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header Section */}
+        <div className="megapayer-panel p-8 text-megapayer-text relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-megapayer-violet/10 via-megapayer-teal/10 to-megapayer-emerald/10"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-megapayer-violet to-megapayer-teal rounded-2xl flex items-center justify-center shadow-lg">
+                  <CustomIcons.User className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold mb-2 font-heading text-megapayer-text">Account Management</h1>
+                  <p className="text-megapayer-muted text-lg">Manage your wallet account and security settings</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-megapayer-muted text-sm mb-1">Total Accounts</p>
+                <p className="text-4xl font-bold text-megapayer-text">{accounts.length}</p>
+                <div className="flex items-center justify-end gap-1 mt-1">
+                  <div className="w-3 h-3 bg-megapayer-emerald rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-megapayer-emerald">Active</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-megapayer-violet/10 rounded-full"></div>
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-megapayer-teal/5 rounded-full"></div>
+        </div>
+
         {/* Account Overview */}
-        <motion.div
-          className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 animate-scale-in"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Account Overview</h2>
+        <div className="megapayer-panel p-8 animate-fade-in-up">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-megapayer-teal to-megapayer-emerald rounded-xl flex items-center justify-center shadow-lg">
+                <CustomIcons.Wallet className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-megapayer-text font-heading">Account Overview</h2>
+                <p className="text-megapayer-muted">Current wallet information and status</p>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-green-600 font-medium">Active</span>
+              <div className="w-3 h-3 bg-megapayer-emerald rounded-full animate-pulse"></div>
+              <span className="text-sm text-megapayer-emerald font-medium">Active</span>
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Wallet Address</label>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-mono bg-gray-100 p-3 rounded-lg break-all flex-1">
+            <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-border-soft">
+              <label className="block text-sm font-semibold text-megapayer-text mb-3">Wallet Address</label>
+              <div className="flex items-center gap-3">
+                <p className="text-sm font-mono bg-megapayer-panel p-3 rounded-xl break-all flex-1 text-megapayer-text">
                   {address}
                 </p>
                 <button
                   onClick={() => handleCopy(address || '', 'address')}
-                  className="p-2 rounded-lg hover:bg-gray-200 text-gray-600 transition-colors"
+                  className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
                   title="Copy address"
                 >
-                  {copied === 'address' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  {copied === 'address' ? <CustomIcons.CheckCircle className="h-4 w-4 text-megapayer-emerald" /> : <CustomIcons.Copy className="h-4 w-4" />}
                 </button>
               </div>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Current Network</label>
-              <div className="flex items-center gap-2">
-                <p className="text-sm bg-gray-100 p-3 rounded-lg flex-1">
+            <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-border-soft">
+              <label className="block text-sm font-semibold text-megapayer-text mb-3">Current Network</label>
+              <div className="flex items-center gap-3">
+                <p className="text-sm bg-megapayer-panel p-3 rounded-xl flex-1 text-megapayer-text">
                   {currentNetwork?.name} (Chain ID: {currentNetwork?.chainId})
                 </p>
                 <button
                   onClick={() => getBalance()}
                   disabled={isLoading}
-                  className="p-2 rounded-lg hover:bg-gray-200 text-gray-600 transition-colors disabled:opacity-50"
+                  className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110 disabled:opacity-50"
                   title="Refresh balance"
                 >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <CustomIcons.Refresh className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Security Information */}
-        <motion.div
-          className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 animate-scale-in delay-100"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <Shield className="h-6 w-6 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Security Information</h2>
+        <div className="megapayer-panel p-8 animate-fade-in-up">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-gradient-to-br from-megapayer-emerald to-megapayer-teal rounded-xl flex items-center justify-center shadow-lg">
+              <CustomIcons.Shield className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-megapayer-text font-heading">Security Information</h2>
+              <p className="text-megapayer-muted">Wallet security details and sensitive data</p>
+            </div>
           </div>
           
-          <div className="space-y-4">
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+          <div className="space-y-6">
+            <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-border-soft">
+              <div className="flex items-start gap-4">
+                <CustomIcons.AlertTriangle className="w-5 h-5 text-megapayer-accent mt-1 flex-shrink-0" />
                 <div>
-                  <h3 className="font-medium text-yellow-800">Important Security Notice</h3>
-                  <p className="text-sm text-yellow-700 mt-1">
+                  <h3 className="font-semibold text-megapayer-text mb-2">Important Security Notice</h3>
+                  <p className="text-sm text-megapayer-muted">
                     Never share your private key or seed phrase with anyone. These provide full access to your wallet.
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Private Key</label>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-mono bg-gray-100 p-3 rounded-lg break-all flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-border-soft">
+                <label className="block text-sm font-semibold text-megapayer-text mb-3">Private Key</label>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm font-mono bg-megapayer-panel p-3 rounded-xl break-all flex-1 text-megapayer-text">
                     {showPrivateKey ? (wallet && typeof wallet.getPrivateKey === 'function' ? wallet.getPrivateKey() : 'Not available') : '••••••••••••••••'}
                   </p>
                   <button
                     onClick={showPrivateKey ? () => setShowPrivateKey(false) : handleShowPrivateKey}
-                    className="p-2 rounded-lg hover:bg-gray-200 text-gray-600 transition-colors"
+                    className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
                     title={showPrivateKey ? 'Hide private key' : 'Show private key'}
                   >
-                    {showPrivateKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPrivateKey ? <CustomIcons.EyeOff className="h-4 w-4" /> : <CustomIcons.Eye className="h-4 w-4" />}
                   </button>
                   <button
                     onClick={() => handleCopy('0x1234...5678', 'privateKey')}
-                    className="p-2 rounded-lg hover:bg-gray-200 text-gray-600 transition-colors"
+                    className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
                     title="Copy private key"
                   >
-                    {copied === 'privateKey' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    {copied === 'privateKey' ? <CustomIcons.CheckCircle className="h-4 w-4 text-megapayer-emerald" /> : <CustomIcons.Copy className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Seed Phrase</label>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-mono bg-gray-100 p-3 rounded-lg break-all flex-1">
-                    {showSeedPhrase ? (wallet && typeof wallet.getMnemonicPhrase === 'function' ? wallet.getMnemonicPhrase() : 'Not available') : '••••••••••••••••'}
+              <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-border-soft">
+                <label className="block text-sm font-semibold text-megapayer-text mb-3">Seed Phrase</label>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm font-mono bg-megapayer-panel p-3 rounded-xl break-all flex-1 text-megapayer-text">
+                    {showSeedPhrase ? (() => {
+                      const addressToUse = currentAccount?.address || '';
+                      console.log('Account page: Getting seed phrase for address:', addressToUse);
+                      return getAccountSeedPhrase(addressToUse) || 'Not available';
+                    })() : '••••••••••••••••'}
                   </p>
                   <button
                     onClick={showSeedPhrase ? () => setShowSeedPhrase(false) : handleShowSeedPhrase}
-                    className="p-2 rounded-lg hover:bg-gray-200 text-gray-600 transition-colors"
+                    className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
                     title={showSeedPhrase ? 'Hide seed phrase' : 'Show seed phrase'}
                   >
-                    {showSeedPhrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showSeedPhrase ? <CustomIcons.EyeOff className="h-4 w-4" /> : <CustomIcons.Eye className="h-4 w-4" />}
                   </button>
                   <button
                     onClick={() => handleCopy('word1 word2 word3...', 'seedPhrase')}
-                    className="p-2 rounded-lg hover:bg-gray-200 text-gray-600 transition-colors"
+                    className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
                     title="Copy seed phrase"
                   >
-                    {copied === 'seedPhrase' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    {copied === 'seedPhrase' ? <CustomIcons.CheckCircle className="h-4 w-4 text-megapayer-emerald" /> : <CustomIcons.Copy className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Account Management */}
-        <motion.div
-          className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 animate-scale-in delay-200"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <div className="flex items-center justify-between mb-6">
+        <div className="megapayer-panel p-8 animate-fade-in-up">
+          <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <User className="h-6 w-6 text-blue-600" />
-              <h2 className="text-xl font-semibold text-gray-900">Account Management</h2>
+              <div className="w-12 h-12 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-xl flex items-center justify-center shadow-lg">
+                <CustomIcons.User className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-megapayer-text font-heading">Account Management</h2>
+                <p className="text-megapayer-muted">Manage multiple wallet accounts</p>
+              </div>
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-megapayer-muted">
               {accounts.length} account{accounts.length !== 1 ? 's' : ''}
             </div>
           </div>
 
           {/* Error Display */}
           {(error || accountError) && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <p className="text-sm text-red-600 font-medium">{error || accountError}</p>
+            <div className="mb-8 p-6 megapayer-panel-soft rounded-xl border border-megapayer-accent/20 bg-megapayer-accent/5">
+              <div className="flex items-center gap-3">
+                <CustomIcons.AlertTriangle className="h-5 w-5 text-megapayer-accent" />
+                <p className="text-sm text-megapayer-accent font-medium">{error || accountError}</p>
               </div>
             </div>
           )}
 
           {/* Accounts List */}
-          <div className="space-y-3 mb-6">
+          <div className="space-y-4 mb-8">
             {accounts.map((account, index) => (
               <div
                 key={account.address}
-                className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
+                className={`megapayer-panel-soft p-6 rounded-xl border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-fade-in-up ${
                   currentAccount?.address === account.address
-                    ? 'bg-blue-50 border-blue-200'
-                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    ? 'border-2 border-megapayer-teal/50 bg-gradient-to-r from-megapayer-teal/5 to-megapayer-emerald/5'
+                    : 'border border-megapayer-border-soft hover:border-megapayer-border'
                 }`}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                    currentAccount?.address === account.address
-                      ? 'bg-blue-600'
-                      : 'bg-gray-400'
-                  }`}>
-                    {account.name.charAt(0).toUpperCase()}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shadow-lg ${
+                      currentAccount?.address === account.address
+                        ? 'bg-gradient-to-br from-megapayer-teal to-megapayer-emerald'
+                        : 'bg-gradient-to-br from-megapayer-panel-soft to-megapayer-panel'
+                    }`}>
+                      {account.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-bold text-megapayer-text text-lg">{account.name}</p>
+                      <p className="text-sm text-megapayer-muted font-mono">
+                        {account.address.slice(0, 6)}...{account.address.slice(-4)}
+                      </p>
+                      {account.isImported && (
+                        <span className="inline-block px-2 py-1 text-xs bg-megapayer-accent/20 text-megapayer-accent rounded-full mt-1 font-medium">
+                          Imported
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{account.name}</p>
-                    <p className="text-sm text-gray-500 font-mono">
-                      {account.address.slice(0, 6)}...{account.address.slice(-4)}
-                    </p>
-                    {account.isImported && (
-                      <span className="inline-block px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full mt-1">
-                        Imported
-                      </span>
+                  <div className="flex items-center gap-3">
+                    {currentAccount?.address !== account.address && (
+                      <button
+                        onClick={() => handleSwitchAccount(account.address)}
+                        className="px-4 py-2 megapayer-btn-primary rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105"
+                      >
+                        Switch
+                      </button>
+                    )}
+                    {currentAccount?.address === account.address && (
+                      <div className="flex items-center space-x-2 px-3 py-1 bg-megapayer-emerald/20 text-megapayer-emerald rounded-full">
+                        <CustomIcons.CheckCircle className="w-4 h-4" />
+                        <span className="text-sm font-medium">Active</span>
+                      </div>
+                    )}
+                    {accounts.length > 1 && (
+                      <button
+                        onClick={() => handleRemoveAccount(account.address)}
+                        className="p-3 text-megapayer-muted hover:text-megapayer-accent transition-all duration-300 hover:scale-110 hover:bg-megapayer-panel-soft rounded-xl"
+                        title="Remove account"
+                      >
+                        <CustomIcons.Trash2 className="h-4 w-4" />
+                      </button>
                     )}
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {currentAccount?.address !== account.address && (
-                    <button
-                      onClick={() => handleSwitchAccount(account.address)}
-                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Switch
-                    </button>
-                  )}
-                  {currentAccount?.address === account.address && (
-                    <span className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded-lg font-medium">
-                      Active
-                    </span>
-                  )}
-                  {accounts.length > 1 && (
-                    <button
-                      onClick={() => handleRemoveAccount(account.address)}
-                      className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                      title="Remove account"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
           </div>
           
           {/* Action Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <button
               onClick={() => setShowCreateAccount(true)}
-              className="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+              className="flex items-center gap-4 p-6 megapayer-panel-soft hover:bg-megapayer-panel border border-megapayer-border-soft hover:border-megapayer-border rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
             >
-              <Plus className="h-5 w-5 text-blue-600" />
+              <div className="w-12 h-12 bg-gradient-to-br from-megapayer-teal to-megapayer-emerald rounded-xl flex items-center justify-center shadow-lg">
+                <CustomIcons.Plus className="h-6 w-6 text-white" />
+              </div>
               <div className="text-left">
-                <p className="font-medium text-blue-900">Create New Account</p>
-                <p className="text-sm text-blue-700">Generate a new wallet account</p>
+                <p className="font-bold text-megapayer-text text-lg">Create New Account</p>
+                <p className="text-sm text-megapayer-muted">Generate a new wallet account</p>
               </div>
             </button>
             
             <button
               onClick={() => setShowImportAccount(true)}
-              className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition-colors"
+              className="flex items-center gap-4 p-6 megapayer-panel-soft hover:bg-megapayer-panel border border-megapayer-border-soft hover:border-megapayer-border rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
             >
-              <Key className="h-5 w-5 text-green-600" />
+              <div className="w-12 h-12 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-xl flex items-center justify-center shadow-lg">
+                <CustomIcons.Key className="h-6 w-6 text-white" />
+              </div>
               <div className="text-left">
-                <p className="font-medium text-green-900">Import Account</p>
-                <p className="text-sm text-green-700">Import from private key, seed phrase, or backup</p>
+                <p className="font-bold text-megapayer-text text-lg">Import Account</p>
+                <p className="text-sm text-megapayer-muted">Import from private key, seed phrase, or backup</p>
               </div>
             </button>
           </div>
-        </motion.div>
+        </div>
 
         {/* Wallet Actions */}
-        <motion.div
-          className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 animate-scale-in delay-300"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <Key className="h-6 w-6 text-purple-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Wallet Actions</h2>
+        <div className="megapayer-panel p-8 animate-fade-in-up">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-gradient-to-br from-megapayer-violet to-megapayer-teal rounded-xl flex items-center justify-center shadow-lg">
+              <CustomIcons.Key className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-megapayer-text font-heading">Wallet Actions</h2>
+              <p className="text-megapayer-muted">Export wallet data and security options</p>
+            </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <button
               onClick={handleExportWallet}
-              className="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+              className="flex items-center gap-4 p-6 megapayer-panel-soft hover:bg-megapayer-panel border border-megapayer-border-soft hover:border-megapayer-border rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
             >
-              <Download className="h-5 w-5 text-blue-600" />
+              <div className="w-12 h-12 bg-gradient-to-br from-megapayer-teal to-megapayer-emerald rounded-xl flex items-center justify-center shadow-lg">
+                <CustomIcons.Download className="h-6 w-6 text-white" />
+              </div>
               <div className="text-left">
-                <p className="font-medium text-blue-900">Export Wallet</p>
-                <p className="text-sm text-blue-700">Download wallet data</p>
+                <p className="font-bold text-megapayer-text text-lg">Export Wallet</p>
+                <p className="text-sm text-megapayer-muted">Download wallet data</p>
               </div>
             </button>
             
             <button
               onClick={lock}
-              className="flex items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
+              className="flex items-center gap-4 p-6 megapayer-panel-soft hover:bg-megapayer-panel border border-megapayer-border-soft hover:border-megapayer-border rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
             >
-              <Shield className="h-5 w-5 text-gray-600" />
+              <div className="w-12 h-12 bg-gradient-to-br from-megapayer-panel-soft to-megapayer-panel rounded-xl flex items-center justify-center shadow-lg">
+                <CustomIcons.Shield className="h-6 w-6 text-megapayer-muted" />
+              </div>
               <div className="text-left">
-                <p className="font-medium text-gray-900">Lock Wallet</p>
-                <p className="text-sm text-gray-700">Secure your wallet</p>
+                <p className="font-bold text-megapayer-text text-lg">Lock Wallet</p>
+                <p className="text-sm text-megapayer-muted">Secure your wallet</p>
               </div>
             </button>
           </div>
-        </motion.div>
+        </div>
 
         {/* Danger Zone */}
-        <motion.div
-          className="bg-white rounded-xl shadow-lg border border-red-200 p-6 animate-scale-in delay-300"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <Trash2 className="h-6 w-6 text-red-600" />
-            <h2 className="text-xl font-semibold text-red-900">Danger Zone</h2>
+        <div className="megapayer-panel p-8 animate-fade-in-up border-2 border-megapayer-accent/20">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-gradient-to-br from-megapayer-accent to-red-500 rounded-xl flex items-center justify-center shadow-lg">
+              <CustomIcons.Trash2 className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-megapayer-accent font-heading">Danger Zone</h2>
+              <p className="text-megapayer-muted">Irreversible actions that affect your wallet</p>
+            </div>
           </div>
           
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+          <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-accent/20 bg-megapayer-accent/5">
+            <div className="flex items-start gap-4">
+              <CustomIcons.AlertTriangle className="h-5 w-5 text-megapayer-accent mt-1 flex-shrink-0" />
               <div className="flex-1">
-                <h3 className="font-medium text-red-800">Delete Wallet</h3>
-                <p className="text-sm text-red-700 mt-1">
+                <h3 className="font-semibold text-megapayer-text mb-2">Delete Wallet</h3>
+                <p className="text-sm text-megapayer-muted mb-4">
                   This will permanently delete your wallet and all associated data. This action cannot be undone.
                 </p>
                 <button
                   onClick={handleDeleteWallet}
-                  className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  className="px-6 py-3 bg-megapayer-accent text-white rounded-xl hover:bg-red-600 transition-all duration-300 font-semibold hover:scale-105"
                 >
                   Delete Wallet
                 </button>
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* PIN Protection Modal */}
@@ -594,33 +666,36 @@ export default function AccountPage() {
         onSuccess={handlePinSuccess}
         title={pinAction === 'privateKey' ? 'View Private Key' : 'View Seed Phrase'}
         description={pinAction === 'privateKey' 
-          ? 'Enter your PIN to view your private key' 
-          : 'Enter your PIN to view your seed phrase'
+          ? 'Enter your wallet password to view your private key' 
+          : 'Enter your wallet password to view your seed phrase'
         }
       />
 
       {/* Create Account Modal */}
       {showCreateAccount && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Create New Account</h3>
+        <div className="fixed inset-0 bg-gradient-to-br from-megapayer-accent/20 via-megapayer-violet/10 to-megapayer-teal/20 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="megapayer-panel max-w-md w-full p-8 animate-scale-in relative border border-megapayer-border/50 backdrop-blur-xl bg-white/95 overflow-hidden">
+            {/* Decorative Background Elements */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-megapayer-accent/10 to-megapayer-violet/5 rounded-full"></div>
+            <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-to-br from-megapayer-teal/10 to-megapayer-emerald/5 rounded-full"></div>
+            <div className="flex items-center justify-between mb-8 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-megapayer-teal to-megapayer-emerald rounded-xl flex items-center justify-center shadow-lg">
+                  <CustomIcons.Plus className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-megapayer-text font-heading">Create New Account</h3>
+              </div>
               <button
                 onClick={() => setShowCreateAccount(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
               >
-                <AlertCircle className="h-6 w-6" />
+                <CustomIcons.X className="w-5 h-5" />
               </button>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-6 relative z-10">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-megapayer-text mb-3">
                   Account Name
                 </label>
                 <input
@@ -628,61 +703,64 @@ export default function AccountPage() {
                   value={createAccountData.name}
                   onChange={(e) => setCreateAccountData({ name: e.target.value })}
                   placeholder={`Account ${accounts.length + 1}`}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 megapayer-panel-soft border border-megapayer-border-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-megapayer-text"
                 />
               </div>
               
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="h-5 w-5 text-blue-600" />
-                  <p className="font-medium text-blue-900">Important</p>
+              <div className="megapayer-panel-soft p-4 rounded-xl border border-megapayer-border-soft">
+                <div className="flex items-center gap-3 mb-2">
+                  <CustomIcons.AlertTriangle className="h-5 w-5 text-megapayer-teal" />
+                  <p className="font-semibold text-megapayer-text">Important</p>
                 </div>
-                <p className="text-sm text-blue-800">
+                <p className="text-sm text-megapayer-muted">
                   A new account will be created from your existing seed phrase. This account will be derived using the next available index.
                 </p>
               </div>
             </div>
             
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-8 relative z-10">
               <button
                 onClick={() => setShowCreateAccount(false)}
-                className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex-1 px-4 py-3 text-megapayer-muted megapayer-panel-soft rounded-xl hover:bg-megapayer-panel transition-all duration-300 font-semibold"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateAccount}
-                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex-1 px-4 py-3 megapayer-btn-primary rounded-xl font-semibold hover:scale-105 transition-all duration-300"
               >
                 Create Account
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
 
       {/* Import Account Modal */}
       {showImportAccount && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Import Account</h3>
+        <div className="fixed inset-0 bg-gradient-to-br from-megapayer-accent/20 via-megapayer-violet/10 to-megapayer-teal/20 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="megapayer-panel max-w-md w-full p-8 animate-scale-in relative border border-megapayer-border/50 backdrop-blur-xl bg-white/95 overflow-hidden">
+            {/* Decorative Background Elements */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-megapayer-accent/10 to-megapayer-violet/5 rounded-full"></div>
+            <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-to-br from-megapayer-teal/10 to-megapayer-emerald/5 rounded-full"></div>
+            <div className="flex items-center justify-between mb-8 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-xl flex items-center justify-center shadow-lg">
+                  <CustomIcons.Key className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-megapayer-text font-heading">Import Account</h3>
+              </div>
               <button
                 onClick={() => setShowImportAccount(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
               >
-                <AlertCircle className="h-6 w-6" />
+                <CustomIcons.X className="w-5 h-5" />
               </button>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-6 relative z-10">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-megapayer-text mb-3">
                   Import Type
                 </label>
                 <select
@@ -692,7 +770,7 @@ export default function AccountPage() {
                     importType: e.target.value as 'privateKey' | 'mnemonic' | 'backup',
                     privateKey: ''
                   }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 megapayer-panel-soft border border-megapayer-border-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-megapayer-text"
                 >
                   <option value="privateKey">Private Key</option>
                   <option value="mnemonic">Seed Phrase</option>
@@ -702,20 +780,20 @@ export default function AccountPage() {
 
               {importAccountData.importType === 'backup' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-megapayer-text mb-3">
                     Backup File
                   </label>
                   <input
                     type="file"
                     accept=".json"
                     onChange={handleFileImport}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 megapayer-panel-soft border border-megapayer-border-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-megapayer-text"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-megapayer-text mb-3">
                   {importAccountData.importType === 'privateKey' ? 'Private Key' : 
                    importAccountData.importType === 'mnemonic' ? 'Seed Phrase' : 'Data'}
                 </label>
@@ -728,12 +806,12 @@ export default function AccountPage() {
                     'Data will be loaded from file'
                   }
                   rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 megapayer-panel-soft border border-megapayer-border-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-megapayer-text"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-megapayer-text mb-3">
                   Account Name
                 </label>
                 <input
@@ -741,16 +819,16 @@ export default function AccountPage() {
                   value={importAccountData.name}
                   onChange={(e) => setImportAccountData(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Imported Account"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 megapayer-panel-soft border border-megapayer-border-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-megapayer-text"
                 />
               </div>
               
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-600" />
-                  <p className="font-medium text-yellow-900">Warning</p>
+              <div className="megapayer-panel-soft p-4 rounded-xl border border-megapayer-border-soft">
+                <div className="flex items-center gap-3 mb-2">
+                  <CustomIcons.AlertTriangle className="h-5 w-5 text-megapayer-accent" />
+                  <p className="font-semibold text-megapayer-text">Warning</p>
                 </div>
-                <p className="text-sm text-yellow-800">
+                <p className="text-sm text-megapayer-muted">
                   {importAccountData.importType === 'mnemonic' || importAccountData.importType === 'backup'
                     ? 'Importing a seed phrase will replace your current wallet. Make sure you have backed up your current wallet first.'
                     : 'Only import accounts from trusted sources. Never share your private keys.'}
@@ -758,84 +836,87 @@ export default function AccountPage() {
               </div>
             </div>
             
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-8 relative z-10">
               <button
                 onClick={() => setShowImportAccount(false)}
-                className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex-1 px-4 py-3 text-megapayer-muted megapayer-panel-soft rounded-xl hover:bg-megapayer-panel transition-all duration-300 font-semibold"
               >
                 Cancel
               </button>
               <button
                 onClick={handleImportAccount}
-                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="flex-1 px-4 py-3 megapayer-btn-primary rounded-xl font-semibold hover:scale-105 transition-all duration-300"
               >
                 Import Account
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
 
       {/* Private Key Modal */}
       {showPrivateKeyModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Private Key</h3>
+        <div className="fixed inset-0 bg-gradient-to-br from-megapayer-accent/20 via-megapayer-violet/10 to-megapayer-teal/20 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="megapayer-panel max-w-md w-full p-8 animate-scale-in relative border border-megapayer-border/50 backdrop-blur-xl bg-white/95 overflow-hidden">
+            {/* Decorative Background Elements */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-megapayer-accent/10 to-megapayer-violet/5 rounded-full"></div>
+            <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-to-br from-megapayer-teal/10 to-megapayer-emerald/5 rounded-full"></div>
+            <div className="flex items-center justify-between mb-8 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-megapayer-accent to-red-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <CustomIcons.Key className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-megapayer-text font-heading">Private Key</h3>
+              </div>
               <button
                 onClick={() => setShowPrivateKeyModal(null)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
               >
-                <AlertCircle className="h-6 w-6" />
+                <CustomIcons.X className="w-5 h-5" />
               </button>
             </div>
             
-            <div className="space-y-4">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                  <p className="font-medium text-red-900">Security Warning</p>
+            <div className="space-y-6 relative z-10">
+              <div className="megapayer-panel-soft p-4 rounded-xl border border-megapayer-accent/20 bg-megapayer-accent/5">
+                <div className="flex items-center gap-3 mb-2">
+                  <CustomIcons.AlertTriangle className="h-5 w-5 text-megapayer-accent" />
+                  <p className="font-semibold text-megapayer-text">Security Warning</p>
                 </div>
-                <p className="text-sm text-red-800">
+                <p className="text-sm text-megapayer-muted">
                   Never share your private key with anyone. Anyone with access to this key can control your account.
                 </p>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-megapayer-text mb-3">
                   Private Key
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <input
                     type="text"
                     value={showPrivateKeyModal}
                     readOnly
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm"
+                    className="flex-1 px-4 py-3 megapayer-panel-soft border border-megapayer-border-soft rounded-xl font-mono text-sm text-megapayer-text"
                   />
                   <button
                     onClick={() => handleCopy(showPrivateKeyModal, 'privateKey')}
-                    className="p-3 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
                   >
-                    {copied === 'privateKey' ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                    {copied === 'privateKey' ? <CustomIcons.CheckCircle className="h-5 w-5 text-megapayer-emerald" /> : <CustomIcons.Copy className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
             </div>
             
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-8 relative z-10">
               <button
                 onClick={() => setShowPrivateKeyModal(null)}
-                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                className="flex-1 px-4 py-3 megapayer-panel-soft text-megapayer-text rounded-xl hover:bg-megapayer-panel transition-all duration-300 font-semibold"
               >
                 Close
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
     </Layout>

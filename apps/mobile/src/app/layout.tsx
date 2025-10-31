@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Sora } from 'next/font/google';
 import { Providers } from '@/lib/providers';
-import { MobileWarning } from '@/components/MobileWarning';
+import MobileLayout from '@/components/layout/MobileLayout';
 import './globals.css';
 
 const inter = Inter({ 
@@ -30,11 +30,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${sora.variable} font-sans megapayer-bg`}>
         <Providers>
-          <div className="min-h-screen">
+          <MobileLayout>
             {children}
-          </div>
+          </MobileLayout>
         </Providers>
-        <MobileWarning />
       </body>
     </html>
   );

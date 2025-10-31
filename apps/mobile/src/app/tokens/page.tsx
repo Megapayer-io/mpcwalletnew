@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
-import { Layout } from '@/components/layout/Layout';
 import { CustomIcons } from '@/components/icons/CustomIcons';
 import { getTokenIcon, generateFallbackIcon } from '@/lib/tokenIconService';
 import { updateAllTokenLogos, updateMissingLogos, getLogoStats, clearCacheAndRefresh } from '@/lib/tokenLogoManager';
 import { cleanupDuplicateTokens } from '@/lib/cleanupDuplicates';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Token {
   address: string;
@@ -19,11 +19,85 @@ interface Token {
   logoUrl?: string;
 }
 
+// Beautiful SVG Graphics for Tokens Page
+const TokenIcon = () => (
+  <svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="tokenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#22E1FF" />
+        <stop offset="50%" stopColor="#7C3AED" />
+        <stop offset="100%" stopColor="#34D399" />
+      </linearGradient>
+      <filter id="glowToken">
+        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    
+    {/* Background Circle */}
+    <circle cx="70" cy="70" r="65" fill="rgba(34, 225, 255, 0.08)" />
+    
+    {/* Token Coin */}
+    <motion.g
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* Outer Coin */}
+      <circle cx="70" cy="70" r="35" fill="none" stroke="url(#tokenGradient)" strokeWidth="4" filter="url(#glowToken)" />
+      
+      {/* Inner Coin Design */}
+      <circle cx="70" cy="70" r="25" fill="rgba(34, 225, 255, 0.1)" />
+      <path
+        d="M55 70 Q70 55 85 70 Q70 85 55 70"
+        fill="none"
+        stroke="url(#tokenGradient)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      
+      {/* Token Symbol */}
+      <text x="70" y="76" textAnchor="middle" fill="url(#tokenGradient)" fontSize="16" fontWeight="bold">$</text>
+    </motion.g>
+    
+    {/* Floating Tokens */}
+    {[...Array(5)].map((_, i) => {
+      const angle = (i * 72) * Math.PI / 180;
+      const radius = 50;
+      const x = 70 + Math.cos(angle) * radius;
+      const y = 70 + Math.sin(angle) * radius;
+      return (
+        <motion.circle
+          key={i}
+          cx={x}
+          cy={y}
+          r="4"
+          fill="#7C3AED"
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{
+            opacity: [0, 1, 0],
+            scale: [0, 1.2, 0]
+          }}
+          transition={{
+            delay: 0.6 + i * 0.15,
+            duration: 2.5,
+            repeat: Infinity
+          }}
+        />
+      );
+    })}
+  </svg>
+);
+
 export default function TokensPage() {
   const router = useRouter();
   const {
     address,
     isUnlocked,
+    isInitialized,
     currentNetwork,
     getTokenMetadata,
     getTokenBalance,
@@ -39,6 +113,7 @@ export default function TokensPage() {
   const [copied, setCopied] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
   const [isUpdatingLogos, setIsUpdatingLogos] = useState(false);
   const [logoStats, setLogoStats] = useState({
     totalTokens: 0,
@@ -50,13 +125,13 @@ export default function TokensPage() {
 
   // Redirect to unlock page if wallet is locked
   useEffect(() => {
-    if (!isUnlocked) {
+    if (isInitialized && !isUnlocked) {
       router.push('/unlock');
     }
-  }, [isUnlocked, router]);
+  }, [isInitialized, isUnlocked, router]);
 
   useEffect(() => {
-    cleanupDuplicateTokens(); // Clean up duplicates first
+    cleanupDuplicateTokens();
     loadTokens();
     updateLogoStats();
     
@@ -69,7 +144,6 @@ export default function TokensPage() {
       }
     };
     
-    // Run auto-update after a short delay
     const timeoutId = setTimeout(autoUpdateLogos, 2000);
     return () => clearTimeout(timeoutId);
   }, []);
@@ -80,7 +154,6 @@ export default function TokensPage() {
       return;
     }
     
-    // Migrate old tokens to network-specific storage
     const oldTokenKey = 'mpc-wallet-tokens';
     const networkKey = `mpc-wallet-tokens-${currentNetwork.chainId}`;
     
@@ -93,16 +166,13 @@ export default function TokensPage() {
       console.log(`✅ Migrated tokens to ${networkKey}`);
     }
     
-    // Load tokens specific to current network
     const storedTokens = localStorage.getItem(networkKey);
     if (storedTokens) {
       let tokens = JSON.parse(storedTokens);
       
-      // Remove duplicate native tokens (address === '')
       const nativeTokens = tokens.filter((token: any) => token.address === '');
       const customTokens = tokens.filter((token: any) => token.address !== '');
       
-      // If there are multiple native tokens, keep only the first one
       if (nativeTokens.length > 1) {
         tokens = [nativeTokens[0], ...customTokens];
         localStorage.setItem(networkKey, JSON.stringify(tokens));
@@ -119,29 +189,6 @@ export default function TokensPage() {
     setLogoStats(stats);
   };
 
-  const handleUpdateAllLogos = async () => {
-    setIsUpdatingLogos(true);
-    setError('');
-    setSuccess('');
-    
-    try {
-      const result = await updateAllTokenLogos();
-      if (result.success) {
-        setSuccess(result.message);
-        loadTokens(); // Reload tokens to show updated logos
-        updateLogoStats();
-        setTimeout(() => setSuccess(''), 5000);
-      } else {
-        setError(result.message);
-      }
-    } catch (error) {
-      console.error('Failed to update logos:', error);
-      setError('Failed to update token logos. Please try again.');
-    } finally {
-      setIsUpdatingLogos(false);
-    }
-  };
-
   const handleUpdateMissingLogos = async () => {
     setIsUpdatingLogos(true);
     setError('');
@@ -152,7 +199,7 @@ export default function TokensPage() {
       if (result.success) {
         if (result.updatedCount > 0) {
           setSuccess(result.message);
-          loadTokens(); // Reload tokens to show updated logos
+          loadTokens();
           updateLogoStats();
           setTimeout(() => setSuccess(''), 5000);
         }
@@ -167,42 +214,17 @@ export default function TokensPage() {
     }
   };
 
-  const handleClearCacheAndRefresh = async () => {
-    setIsUpdatingLogos(true);
-    setError('');
-    setSuccess('');
-    
-    try {
-      const result = await clearCacheAndRefresh();
-      if (result.success) {
-        setSuccess(result.message);
-        loadTokens(); // Reload tokens to show updated logos
-        updateLogoStats();
-        setTimeout(() => setSuccess(''), 5000);
-      } else {
-        setError(result.message);
-      }
-    } catch (error) {
-      console.error('Failed to clear cache and refresh:', error);
-      setError('Failed to refresh token logos. Please try again.');
-    } finally {
-      setIsUpdatingLogos(false);
-    }
-  };
-
   const handleAddToken = async () => {
     if (!newTokenAddress.trim()) {
       setError('Please enter a token contract address');
       return;
     }
 
-    // Validate address format
     if (!/^0x[a-fA-F0-9]{40}$/.test(newTokenAddress.trim())) {
       setError('Invalid contract address format');
       return;
     }
 
-    // Check if token already exists
     if (tokens.some(token => token.address.toLowerCase() === newTokenAddress.toLowerCase())) {
       setError('Token already added to your list');
       return;
@@ -215,7 +237,6 @@ export default function TokensPage() {
     try {
       const metadata = await getTokenMetadata(newTokenAddress);
       if (metadata) {
-        // Try to get token icon using the new service
         const iconResult = await getTokenIcon(metadata.symbol, newTokenAddress);
         
         const newToken: Token = {
@@ -229,13 +250,13 @@ export default function TokensPage() {
         const updatedTokens = [...tokens, newToken];
         setTokens(updatedTokens);
         
-        // Save to network-specific storage
         if (currentNetwork?.chainId) {
           const networkKey = `mpc-wallet-tokens-${currentNetwork.chainId}`;
           localStorage.setItem(networkKey, JSON.stringify(updatedTokens));
         }
         setNewTokenAddress('');
-        setSuccess(`Successfully added ${metadata.symbol} (${metadata.name})${iconResult.url ? ` with icon from ${iconResult.source}` : ''}`);
+        setShowAddForm(false);
+        setSuccess(`Successfully added ${metadata.symbol}`);
         setTimeout(() => setSuccess(''), 3000);
       } else {
         setError('Failed to fetch token metadata. Please check the contract address.');
@@ -252,11 +273,12 @@ export default function TokensPage() {
     const updatedTokens = tokens.filter(token => token.address !== tokenAddress);
     setTokens(updatedTokens);
     
-    // Save to network-specific storage
     if (currentNetwork?.chainId) {
       const networkKey = `mpc-wallet-tokens-${currentNetwork.chainId}`;
       localStorage.setItem(networkKey, JSON.stringify(updatedTokens));
     }
+    setSuccess('Token removed successfully');
+    setTimeout(() => setSuccess(''), 3000);
   };
 
   const handleCopy = async (text: string, type: string) => {
@@ -275,285 +297,267 @@ export default function TokensPage() {
     token.address.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Show loading while redirecting
-  if (!isUnlocked) {
-    return (
-      <Layout title="Token Management">
-        <div className="max-w-2xl mx-auto text-center py-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
-            <CustomIcons.Star className="w-10 h-10 text-white" />
-          </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-megapayer-teal mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-megapayer-text mb-2">Redirecting to unlock page...</h1>
-          <p className="text-megapayer-muted">
-            Please wait while we redirect you to unlock your wallet.
-          </p>
-        </div>
-      </Layout>
-    );
+  if (!isInitialized || !isUnlocked) {
+    return null;
   }
 
   return (
-    <Layout title="Token Management">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header Section */}
-        <div className="megapayer-panel p-8 text-megapayer-text relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-megapayer-accent/10 via-megapayer-violet/10 to-megapayer-emerald/10"></div>
-          <div className="relative z-10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-megapayer-accent to-megapayer-emerald rounded-2xl flex items-center justify-center shadow-lg">
-                  <CustomIcons.Star className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold mb-2 font-heading text-megapayer-text">Token Management</h1>
-                  <p className="text-megapayer-muted text-lg">Add custom ERC-20 tokens to your wallet</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-megapayer-muted text-sm mb-1">Total Tokens</p>
-                <p className="text-4xl font-bold text-megapayer-text">{tokens.length}</p>
-                <div className="flex items-center justify-end gap-1 mt-1">
-                  <div className="w-3 h-3 bg-megapayer-emerald rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-megapayer-emerald">Active</span>
-                </div>
-                {logoStats.tokensWithoutLogos > 0 && (
-                  <div className="mt-2 text-xs text-megapayer-muted">
-                    {logoStats.tokensWithoutLogos} tokens using fallback icons
-                  </div>
-                )}
-              </div>
-            </div>
+    <div className="min-h-screen megapayer-bg flex flex-col relative overflow-hidden pb-24">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute -top-1/2 -right-1/2 w-full h-full rounded-full blur-3xl opacity-8"
+          style={{
+            background: `linear-gradient(135deg, rgba(124,58,237,0.2), rgba(34,225,255,0.15))`
+          }}
+          animate={{
+            scale: [1, 1.2, 1],
+            rotate: [0, 90, 0]
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
+      </div>
+
+      {/* Header Section */}
+      <div className="px-5 pt-6 pb-3 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-4 mb-4"
+        >
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#22E1FF15] flex-shrink-0">
+            <TokenIcon />
           </div>
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-megapayer-accent/10 rounded-full"></div>
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-megapayer-emerald/5 rounded-full"></div>
-        </div>
-
-        {/* Add Token Form */}
-        <div className="megapayer-panel p-8 animate-fade-in-up">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-xl flex items-center justify-center shadow-lg">
-              <CustomIcons.Plus className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-megapayer-text font-heading">Add Custom Token</h2>
-              <p className="text-megapayer-muted">Import ERC-20 tokens by contract address</p>
-            </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold font-heading text-megapayer-text">Tokens</h1>
+            <p className="text-sm font-body text-megapayer-muted mt-0.5">
+              {tokens.length} {tokens.length === 1 ? 'token' : 'tokens'} imported
+            </p>
           </div>
-          
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-megapayer-text mb-3">
-                Token Contract Address
-              </label>
-              <div className="flex gap-4">
-                <input
-                  type="text"
-                  value={newTokenAddress}
-                  onChange={(e) => setNewTokenAddress(e.target.value)}
-                  placeholder="0x..."
-                  className="flex-1 px-4 py-3 megapayer-panel-soft border border-megapayer-border-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-megapayer-text"
-                />
-                <button
-                  onClick={handleAddToken}
-                  disabled={!newTokenAddress.trim() || isAddingToken}
-                  className="px-6 py-3 megapayer-btn-primary rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center gap-2 font-semibold"
-                >
-                  {isAddingToken ? (
-                    <CustomIcons.Refresh className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CustomIcons.Plus className="h-4 w-4" />
-                  )}
-                  {isAddingToken ? 'Adding...' : 'Add Token'}
-                </button>
+        </motion.div>
+      </div>
+
+      {/* Add Token Section */}
+      <div className="px-5 pb-4 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="megapayer-panel rounded-2xl border border-megapayer-border overflow-hidden"
+        >
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="w-full flex items-center justify-between p-4 hover:bg-megapayer-panel-soft transition-colors"
+          >
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[#22E1FF15] flex-shrink-0">
+                <CustomIcons.Plus className="w-4 h-4 text-[#22E1FF]" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <h3 className="text-sm font-semibold font-heading text-megapayer-text">Import Token</h3>
+                <p className="text-xs font-body text-megapayer-muted mt-0.5">Add custom ERC-20 token</p>
               </div>
             </div>
+            <CustomIcons.ChevronRight className={`w-4 h-4 text-megapayer-muted flex-shrink-0 transition-transform ${showAddForm ? 'rotate-90' : ''}`} />
+          </button>
 
-            {/* Error Message */}
-            {error && (
-              <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-accent/20 bg-megapayer-accent/5">
-                <div className="flex items-start gap-4">
-                  <CustomIcons.AlertTriangle className="h-5 w-5 text-megapayer-accent mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-megapayer-text mb-2">Error</h3>
-                    <p className="text-sm text-megapayer-muted">{error}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Success Message */}
-            {success && (
-              <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-emerald/20 bg-megapayer-emerald/5">
-                <div className="flex items-start gap-4">
-                  <CustomIcons.CheckCircle className="h-5 w-5 text-megapayer-emerald mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-megapayer-text mb-2">Success</h3>
-                    <p className="text-sm text-megapayer-muted">{success}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-border-soft">
-              <div className="flex items-start gap-4">
-                <CustomIcons.AlertTriangle className="h-5 w-5 text-megapayer-teal mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-megapayer-text mb-2">How to find token addresses</h3>
-                  <p className="text-sm text-megapayer-muted mb-3">
-                    You can find token contract addresses on block explorers like{' '}
-                    <a
-                      href={currentNetwork?.blockExplorer}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-megapayer-teal hover:text-megapayer-violet underline font-medium"
-                    >
-                      {currentNetwork?.blockExplorer}
-                    </a>
-                    {' '}or token listing websites.
-                  </p>
-                  <p className="text-sm text-megapayer-muted">
-                    Token icons will be automatically fetched when available.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Token List */}
-        <div className="megapayer-panel p-8 animate-fade-in-up">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-megapayer-emerald to-megapayer-teal rounded-xl flex items-center justify-center shadow-lg">
-                <CustomIcons.Star className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-megapayer-text font-heading">Your Tokens</h2>
-                <p className="text-megapayer-muted">{tokens.length} custom tokens added</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <CustomIcons.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-megapayer-muted" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search tokens..."
-                  className="pl-10 pr-4 py-3 megapayer-panel-soft border border-megapayer-border-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal/50 text-megapayer-text"
-                />
-              </div>
-              <button
-                onClick={loadTokens}
-                className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
-                title="Refresh tokens"
+          <AnimatePresence>
+            {showAddForm && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
               >
-                <CustomIcons.Refresh className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          
+                <div className="px-4 pb-4 pt-2 space-y-4 border-t border-megapayer-border">
+                  <div>
+                    <label className="block text-xs font-semibold font-heading text-megapayer-text mb-2">
+                      Token Contract Address
+                    </label>
+                    <input
+                      type="text"
+                      value={newTokenAddress}
+                      onChange={(e) => {
+                        setNewTokenAddress(e.target.value);
+                        setError('');
+                      }}
+                      placeholder="0x..."
+                      className="w-full px-4 py-3 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal text-megapayer-text placeholder-megapayer-muted font-mono text-sm"
+                    />
+                  </div>
+
+                  {/* Error Message */}
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-2 p-3 megapayer-panel-soft border border-red-400/30 rounded-xl"
+                    >
+                      <CustomIcons.AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                      <p className="text-xs font-body text-red-500">{error}</p>
+                    </motion.div>
+                  )}
+
+                  {/* Success Message */}
+                  {success && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-2 p-3 megapayer-panel-soft border border-megapayer-emerald/30 rounded-xl"
+                    >
+                      <CustomIcons.CheckCircle className="h-4 w-4 text-megapayer-emerald flex-shrink-0" />
+                      <p className="text-xs font-body text-megapayer-emerald">{success}</p>
+                    </motion.div>
+                  )}
+
+                  <motion.button
+                    onClick={handleAddToken}
+                    disabled={!newTokenAddress.trim() || isAddingToken}
+                    whileHover={{ scale: isAddingToken || !newTokenAddress.trim() ? 1 : 1.02 }}
+                    whileTap={{ scale: isAddingToken || !newTokenAddress.trim() ? 1 : 0.98 }}
+                    className="w-full megapayer-btn-primary py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold font-heading flex items-center justify-center gap-2"
+                  >
+                    {isAddingToken ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <CustomIcons.Plus className="w-4 h-4" />
+                        Add Token
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      </div>
+
+      {/* Search Section */}
+      {tokens.length > 0 && (
+        <div className="px-5 pb-4 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="relative"
+          >
+            <CustomIcons.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-megapayer-muted z-10" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search tokens..."
+              className="w-full pl-10 pr-4 py-3 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal text-megapayer-text placeholder-megapayer-muted font-body"
+            />
+          </motion.div>
+        </div>
+      )}
+
+      {/* Tokens List */}
+      <div className="px-5 pb-4 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="megapayer-panel rounded-2xl border border-megapayer-border overflow-hidden"
+        >
           {filteredTokens.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-20 h-20 bg-gradient-to-br from-megapayer-panel-soft to-megapayer-panel rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <CustomIcons.Star className="w-10 h-10 text-megapayer-muted" />
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 bg-megapayer-panel-soft rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <CustomIcons.Star className="w-8 h-8 text-megapayer-muted" />
               </div>
-              <h3 className="text-xl font-bold text-megapayer-text mb-3 font-heading">No Tokens Found</h3>
-              <p className="text-megapayer-muted mb-6">
-                {searchQuery ? 'No tokens match your search.' : 'You haven\'t added any custom tokens yet.'}
+              <h3 className="text-base font-bold font-heading text-megapayer-text mb-2">
+                {searchQuery ? 'No tokens found' : 'No tokens yet'}
+              </h3>
+              <p className="text-sm font-body text-megapayer-muted">
+                {searchQuery
+                  ? 'Try a different search term'
+                  : 'Import a token to get started'}
               </p>
-              {!searchQuery && (
-                <p className="text-sm text-megapayer-muted">
-                  Add a token contract address above to get started.
-                </p>
-              )}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="divide-y divide-megapayer-border">
               {filteredTokens.map((token, index) => (
-                <div
+                <motion.div
                   key={token.address}
-                  className="megapayer-panel-soft p-6 rounded-xl border border-megapayer-border-soft transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-fade-in-up"
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="p-4 hover:bg-megapayer-panel-soft transition-colors"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        {token.logoUrl ? (
-                          <img
-                            src={token.logoUrl}
-                            alt={`${token.symbol} logo`}
-                            className="w-12 h-12 rounded-xl shadow-lg"
-                            onError={(e) => {
-                              // Fallback to generated icon if image fails to load
-                              const target = e.target as HTMLImageElement;
-                              target.src = generateFallbackIcon(token.symbol, 48);
-                            }}
-                          />
-                        ) : (
-                          <img
-                            src={generateFallbackIcon(token.symbol, 48)}
-                            alt={`${token.symbol} generated icon`}
-                            className="w-12 h-12 rounded-xl shadow-lg"
-                          />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-megapayer-text text-lg">{token.symbol}</h3>
-                        <p className="text-sm text-megapayer-muted">{token.name}</p>
-                        <p className="text-xs text-megapayer-muted font-mono mt-1">
-                          {token.address.slice(0, 6)}...{token.address.slice(-4)}
-                        </p>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    {/* Token Logo */}
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden bg-megapayer-panel-soft">
+                      {token.logoUrl ? (
+                        <img
+                          src={token.logoUrl}
+                          alt={`${token.symbol} logo`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = generateFallbackIcon(token.symbol, 48);
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={generateFallbackIcon(token.symbol, 48)}
+                          alt={`${token.symbol} icon`}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
-                    
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="text-sm text-megapayer-muted">{token.decimals} decimals</p>
-                        {token.balance && (
-                          <p className="text-sm font-semibold text-megapayer-text">{token.balance}</p>
-                        )}
-                      </div>
+
+                    {/* Token Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold font-heading text-megapayer-text truncate">
+                        {token.symbol}
+                      </h3>
+                      <p className="text-xs font-body text-megapayer-muted truncate mt-0.5">
+                        {token.name}
+                      </p>
+                      <p className="text-xs font-mono font-body text-megapayer-muted truncate mt-1">
+                        {token.address.slice(0, 8)}...{token.address.slice(-6)}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <motion.button
+                        onClick={() => handleCopy(token.address, token.address)}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="p-2 hover:bg-megapayer-panel rounded-lg transition-colors"
+                        title="Copy address"
+                      >
+                        <CustomIcons.Copy className={`w-4 h-4 ${copied === token.address ? 'text-megapayer-emerald' : 'text-megapayer-muted'}`} />
+                      </motion.button>
                       
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleCopy(token.address, token.address)}
-                          className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
-                          title="Copy contract address"
-                        >
-                          {copied === token.address ? <CustomIcons.CheckCircle className="h-4 w-4 text-megapayer-emerald" /> : <CustomIcons.Copy className="h-4 w-4" />}
-                        </button>
-                        
-                        {currentNetwork?.blockExplorer && (
-                          <a
-                            href={`${currentNetwork.blockExplorer}/token/${token.address}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-3 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
-                            title="View on explorer"
-                          >
-                            <CustomIcons.ExternalLink className="h-4 w-4" />
-                          </a>
-                        )}
-                        
-                        <button
-                          onClick={() => handleRemoveToken(token.address)}
-                          className="p-3 text-megapayer-muted hover:text-megapayer-accent hover:bg-megapayer-panel-soft rounded-xl transition-all duration-300 hover:scale-110"
-                          title="Remove token"
-                        >
-                          <CustomIcons.Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                      <motion.button
+                        onClick={() => handleRemoveToken(token.address)}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Remove token"
+                      >
+                        <CustomIcons.Trash2 className="w-4 h-4 text-red-400" />
+                      </motion.button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
-        </div>
-
+        </motion.div>
       </div>
-    </Layout>
+    </div>
   );
 }

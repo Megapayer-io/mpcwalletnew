@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CustomIcons } from './icons/CustomIcons';
 import { useWalletStore } from '@/store/wallet';
@@ -12,6 +12,98 @@ interface PinProtectionProps {
   title: string;
   description: string;
 }
+
+// Elegant Lock Icon for Password Entry
+const PasswordLockIcon = () => (
+  <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="lockGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#22E1FF" />
+        <stop offset="50%" stopColor="#7C3AED" />
+        <stop offset="100%" stopColor="#34D399" />
+      </linearGradient>
+      <filter id="glowLock">
+        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    
+    {/* Background Circle */}
+    <circle cx="60" cy="60" r="55" fill="rgba(34, 225, 255, 0.08)" />
+    
+    {/* Lock Body */}
+    <motion.rect
+      x="35"
+      y="50"
+      width="50"
+      height="45"
+      rx="6"
+      fill="none"
+      stroke="url(#lockGradient)"
+      strokeWidth="4"
+      filter="url(#glowLock)"
+      initial={{ pathLength: 0, opacity: 0 }}
+      animate={{ pathLength: 1, opacity: 1 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+    />
+    
+    {/* Lock Shackle */}
+    <motion.path
+      d="M45 50 Q45 30 60 30 Q75 30 75 50"
+      fill="none"
+      stroke="url(#lockGradient)"
+      strokeWidth="4"
+      strokeLinecap="round"
+      filter="url(#glowLock)"
+      initial={{ pathLength: 0, opacity: 0 }}
+      animate={{ pathLength: 1, opacity: 1 }}
+      transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+    />
+    
+    {/* Keyhole */}
+    <motion.circle
+      cx="60"
+      cy="72"
+      r="8"
+      fill="none"
+      stroke="url(#lockGradient)"
+      strokeWidth="3"
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ delay: 0.5, type: "spring" }}
+    />
+    
+    {/* Glowing Particles */}
+    {[...Array(6)].map((_, i) => {
+      const angle = (i * 60) * Math.PI / 180;
+      const radius = 45;
+      const x = 60 + Math.cos(angle) * radius;
+      const y = 60 + Math.sin(angle) * radius;
+      return (
+        <motion.circle
+          key={i}
+          cx={x}
+          cy={y}
+          r="3"
+          fill="#7C3AED"
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{
+            opacity: [0, 1, 0],
+            scale: [0, 1.2, 0]
+          }}
+          transition={{
+            delay: 0.8 + i * 0.1,
+            duration: 2,
+            repeat: Infinity
+          }}
+        />
+      );
+    })}
+  </svg>
+);
 
 export const PinProtection: React.FC<PinProtectionProps> = ({
   isOpen,
@@ -28,6 +120,27 @@ export const PinProtection: React.FC<PinProtectionProps> = ({
 
   const { unlock } = useWalletStore();
 
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setPassword('');
+      setError('');
+      setAttempts(0);
+      setShowPassword(false);
+    }
+  }, [isOpen]);
+
+  // Auto-focus password input when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        const input = document.querySelector('input[type="password"], input[type="text"]') as HTMLInputElement;
+        if (input) input.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -40,11 +153,8 @@ export const PinProtection: React.FC<PinProtectionProps> = ({
     setError('');
 
     try {
-      // Use the wallet's unlock function to verify the password
       await unlock(password);
-      
-      // If unlock succeeds, call onSuccess
-      setAttempts(0); // Reset attempts on successful verification
+      setAttempts(0);
       onSuccess();
       setPassword('');
       onClose();
@@ -69,6 +179,7 @@ export const PinProtection: React.FC<PinProtectionProps> = ({
     setPassword('');
     setError('');
     setAttempts(0);
+    setShowPassword(false);
     onClose();
   };
 
@@ -76,113 +187,100 @@ export const PinProtection: React.FC<PinProtectionProps> = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 bg-gradient-to-br from-megapayer-accent/20 via-megapayer-violet/10 to-megapayer-teal/20 backdrop-blur-md flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-5"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={handleClose}
         >
           <motion.div
-            className="megapayer-panel rounded-3xl shadow-2xl w-full max-w-md p-8 relative border border-megapayer-border/50 backdrop-blur-xl bg-white/95 overflow-hidden"
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="megapayer-panel rounded-2xl border border-megapayer-border w-full max-w-sm p-6 shadow-xl"
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Decorative Background Elements */}
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-megapayer-accent/10 to-megapayer-violet/5 rounded-full"></div>
-            <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-to-br from-megapayer-teal/10 to-megapayer-emerald/5 rounded-full"></div>
-            
+            {/* Close Button */}
             <button
               onClick={handleClose}
-              className="absolute top-4 right-4 p-2 rounded-xl hover:bg-megapayer-panel-soft text-megapayer-muted hover:text-megapayer-text transition-all duration-200 z-10"
+              className="absolute top-4 right-4 p-2 rounded-lg hover:bg-megapayer-panel-soft text-megapayer-muted hover:text-megapayer-text transition-colors"
             >
-              <CustomIcons.X className="h-5 w-5" />
+              <CustomIcons.X className="w-4 h-4" />
             </button>
 
-            <div className="text-center mb-8 relative z-10">
-              <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <CustomIcons.Shield className="w-10 h-10 text-white" />
+            {/* Icon and Title */}
+            <div className="text-center mb-6">
+              <div className="flex justify-center mb-4">
+                <PasswordLockIcon />
               </div>
-              <h2 className="text-2xl font-bold text-megapayer-text mb-3 font-heading">{title}</h2>
-              <p className="text-megapayer-muted">{description}</p>
+              <h2 className="text-xl font-bold font-heading text-megapayer-text mb-1">{title}</h2>
+              <p className="text-sm font-body text-megapayer-muted">{description}</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+            {/* Password Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-megapayer-text mb-3">
-                  Enter your wallet password
-                </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your wallet password"
-                    className="w-full px-4 py-4 pr-12 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-megapayer-text placeholder-megapayer-muted"
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError('');
+                    }}
+                    placeholder="Enter your password"
+                    className="w-full px-4 py-3.5 pr-12 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal/50 focus:border-megapayer-teal text-megapayer-text placeholder-megapayer-muted font-body"
                     autoFocus
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 text-megapayer-muted hover:text-megapayer-text transition-colors duration-200"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 text-megapayer-muted hover:text-megapayer-text transition-colors"
+                    disabled={isLoading}
                   >
-                    {showPassword ? <CustomIcons.EyeOff className="h-5 w-5" /> : <CustomIcons.Eye className="h-5 w-5" />}
+                    {showPassword ? (
+                      <CustomIcons.EyeOff className="w-5 h-5" />
+                    ) : (
+                      <CustomIcons.Eye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </div>
 
+              {/* Error Message */}
               {error && (
                 <motion.div
-                  className="flex items-center gap-3 p-4 megapayer-panel-soft border border-red-400/30 rounded-xl"
+                  className="flex items-center gap-2 p-3 megapayer-panel-soft border border-red-400/30 rounded-xl"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <CustomIcons.AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                  <p className="text-red-600 text-sm font-medium">{error}</p>
+                  <CustomIcons.AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm font-body text-red-500">{error}</p>
                 </motion.div>
               )}
 
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="flex-1 px-4 py-3 megapayer-panel-soft text-megapayer-muted rounded-xl hover:bg-megapayer-panel transition-all duration-200 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading || !password.trim()}
-                  className="flex-1 megapayer-btn-primary py-3 px-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Verifying...
-                    </div>
-                  ) : (
-                    'Verify Password'
-                  )}
-                </button>
-              </div>
+              {/* Submit Button */}
+              <motion.button
+                type="submit"
+                disabled={isLoading || !password.trim()}
+                whileHover={{ scale: isLoading || !password.trim() ? 1 : 1.02 }}
+                whileTap={{ scale: isLoading || !password.trim() ? 1 : 0.98 }}
+                className="w-full megapayer-btn-primary py-3.5 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold font-heading transition-all"
+              >
+                {isLoading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Verifying...
+                  </div>
+                ) : (
+                  'Verify'
+                )}
+              </motion.button>
             </form>
-
-            <div className="mt-6 p-4 megapayer-panel-soft border border-megapayer-teal/20 rounded-xl relative z-10">
-              <div className="flex items-start gap-3">
-                <CustomIcons.Shield className="h-5 w-5 text-megapayer-teal mt-0.5 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-megapayer-text text-sm">Security Notice</h3>
-                  <p className="text-megapayer-muted text-xs mt-1">
-                    Your wallet password is required to access sensitive information. This is the same password you use to unlock your wallet.
-                  </p>
-                </div>
-              </div>
-            </div>
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
   );
 };
-

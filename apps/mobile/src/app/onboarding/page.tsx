@@ -783,8 +783,8 @@ export default function OnboardingPage() {
                   aria-label={`Go to step ${index + 1}`}
                 >
                   <div
-                    className={`rounded-full transition-all duration-300 ${
-                      index === currentStep
+                  className={`rounded-full transition-all duration-300 ${
+                    index === currentStep
                         ? 'w-10 h-2 bg-gradient-to-r from-megapayer-teal via-megapayer-violet to-megapayer-emerald'
                         : 'w-2 h-2 bg-megapayer-muted/40'
                     }`}

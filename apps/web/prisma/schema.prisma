@@ -1,0 +1,297 @@
+// schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// Users collection (extends wallet user profile)
+model User {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  walletAddress     String   @unique @map("wallet_address")
+  username          String?  @unique
+  email             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  isVerified        Boolean  @default(false) @map("is_verified")
+  verificationLevel String   @default("basic") @map("verification_level")
+  reputationScore   Float    @default(5.0) @map("reputation_score")
+  totalTrades       Int      @default(0) @map("total_trades")
+  completedTrades   Int      @default(0) @map("completed_trades")
+  cancelledTrades  Int      @default(0) @map("cancelled_trades")
+  disputeRate       Float    @default(0.0) @map("dispute_rate")
+  isAdmin           Boolean  @default(false) @map("is_admin")
+  isSuspended       Boolean  @default(false) @map("is_suspended")
+  suspendedUntil    DateTime? @map("suspended_until")
+  
+  // Relations
+  paymentMethods    PaymentMethod[]
+  orders            Order[]
+  buyerTrades       Trade[]  @relation("BuyerTrades")
+  sellerTrades      Trade[]  @relation("SellerTrades")
+  tradeMessages     TradeMessage[]
+  disputeMessages   DisputeMessage[]
+  initiatedDisputes Dispute[] @relation("InitiatedDisputes")
+  handledDisputes   Dispute[] @relation("HandledDisputes")
+  ratingsGiven      UserRating[] @relation("Rater")
+  ratingsReceived   UserRating[] @relation("Rated")
+  adminActions      AdminAction[]
+  notifications     Notification[]
+  balances          UserBalance[]
+  
+  @@map("users")
+}
+
+// Payment methods
+model PaymentMethod {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @map("user_id") @db.ObjectId
+  type       String   // 'bank_transfer', 'paypal', 'venmo', 'crypto', etc.
+  details    Json     // Encrypted payment details
+  isVerified Boolean  @default(false) @map("is_verified")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades     Trade[]
+  
+  @@index([userId])
+  @@map("payment_methods")
+}
+
+// Orders
+model Order {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @map("user_id") @db.ObjectId
+  type         String   // 'buy' or 'sell'
+  chainId      Int      @map("chain_id")
+  tokenAddress String?  @map("token_address") // null for native token
+  tokenSymbol  String   @map("token_symbol")
+  tokenName    String   @map("token_name")
+  amount       String   // Decimal as string for precision
+  pricePerUnit String   @map("price_per_unit")
+  totalPrice   String   @map("total_price")
+  fiatCurrency String   @default("USD") @map("fiat_currency")
+  paymentMethodIds String[] @map("payment_method_ids") @db.ObjectId
+  minAmount    String?  @map("min_amount")
+  maxAmount    String?  @map("max_amount")
+  status       String   @default("active") // 'active', 'paused', 'completed', 'cancelled'
+  expiresAt    DateTime? @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades       Trade[]
+  
+  @@index([type, chainId, status])
+  @@index([userId, status])
+  @@map("orders")
+}
+
+// Trades
+model Trade {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId               String   @map("order_id") @db.ObjectId
+  buyerId               String   @map("buyer_id") @db.ObjectId
+  sellerId              String   @map("seller_id") @db.ObjectId
+  chainId               Int      @map("chain_id")
+  tokenAddress          String   @map("token_address")
+  tokenSymbol           String   @map("token_symbol")
+  amount                String   // Decimal as string
+  pricePerUnit          String   @map("price_per_unit")
+  totalPrice            String   @map("total_price")
+  fiatCurrency          String   @default("USD") @map("fiat_currency")
+  paymentMethodId       String?  @map("payment_method_id") @db.ObjectId
+  escrowAddress         String?  @map("escrow_address")
+  escrowTxHash          String?  @map("escrow_tx_hash")
+  status                String   @default("pending") // 'pending', 'escrow_locked', 'payment_pending', 'payment_confirmed', 'completed', 'cancelled', 'disputed'
+  buyerPaymentConfirmed Boolean  @default(false) @map("buyer_payment_confirmed")
+  sellerPaymentConfirmed Boolean @default(false) @map("seller_payment_confirmed")
+  buyerConfirmedAt      DateTime? @map("buyer_confirmed_at")
+  sellerConfirmedAt     DateTime? @map("seller_confirmed_at")
+  completedAt           DateTime? @map("completed_at")
+  cancelledAt           DateTime? @map("cancelled_at")
+  cancellationReason    String?  @map("cancellation_reason")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  order                 Order    @relation(fields: [orderId], references: [id])
+  buyer                 User     @relation("BuyerTrades", fields: [buyerId], references: [id])
+  seller                User     @relation("SellerTrades", fields: [sellerId], references: [id])
+  paymentMethod         PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  messages              TradeMessage[]
+  dispute               Dispute?
+  ratings               UserRating[]
+  escrowTransactions    EscrowTransaction[]
+  
+  @@index([status])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([chainId])
+  @@map("trades")
+}
+
+// Trade messages (chat)
+model TradeMessage {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tradeId    String   @map("trade_id") @db.ObjectId
+  senderId   String   @map("sender_id") @db.ObjectId
+  message    String
+  messageType String  @default("text") @map("message_type") // 'text', 'system', 'payment_confirmation'
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  trade      Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  sender     User     @relation(fields: [senderId], references: [id])
+  
+  @@index([tradeId])
+  @@index([createdAt])
+  @@map("trade_messages")
+}
+
+// Disputes
+model Dispute {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tradeId     String   @unique @map("trade_id") @db.ObjectId
+  initiatedBy String   @map("initiated_by") @db.ObjectId
+  reason      String
+  description String?
+  status      String   @default("open") // 'open', 'reviewing', 'resolved', 'closed'
+  adminId     String?  @map("admin_id") @db.ObjectId
+  resolution  String?
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  trade       Trade    @relation(fields: [tradeId], references: [id])
+  initiatedByUser User  @relation("InitiatedDisputes", fields: [initiatedBy], references: [id])
+  admin       User?    @relation("HandledDisputes", fields: [adminId], references: [id])
+  messages    DisputeMessage[]
+  
+  @@index([status])
+  @@map("disputes")
+}
+
+// Dispute messages
+model DisputeMessage {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  disputeId  String   @map("dispute_id") @db.ObjectId
+  senderId   String   @map("sender_id") @db.ObjectId
+  message    String
+  attachments Json?   // Array of file URLs
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  dispute    Dispute  @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  sender     User     @relation(fields: [senderId], references: [id])
+  
+  @@map("dispute_messages")
+}
+
+// User ratings
+model UserRating {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tradeId      String   @map("trade_id") @db.ObjectId
+  ratedUserId  String   @map("rated_user_id") @db.ObjectId
+  raterUserId  String   @map("rater_user_id") @db.ObjectId
+  rating       Int      // 1-5
+  comment      String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  trade        Trade    @relation(fields: [tradeId], references: [id])
+  ratedUser    User     @relation("Rated", fields: [ratedUserId], references: [id])
+  raterUser    User     @relation("Rater", fields: [raterUserId], references: [id])
+  
+  @@unique([tradeId, raterUserId])
+  @@map("user_ratings")
+}
+
+// Admin actions (audit log)
+model AdminAction {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  adminId    String   @map("admin_id") @db.ObjectId
+  actionType String   @map("action_type") // 'dispute_resolve', 'user_suspend', 'order_remove', etc.
+  targetType String   @map("target_type") // 'user', 'trade', 'order', 'dispute'
+  targetId   String   @map("target_id")
+  details    Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  admin      User     @relation(fields: [adminId], references: [id])
+  
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("admin_actions")
+}
+
+// Escrow transactions (blockchain tracking)
+model EscrowTransaction {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tradeId      String   @map("trade_id") @db.ObjectId
+  chainId      Int      @map("chain_id")
+  txHash       String   @map("tx_hash")
+  txType       String   @map("tx_type") // 'lock', 'release', 'refund'
+  blockNumber  BigInt?  @map("block_number")
+  gasUsed      BigInt?  @map("gas_used")
+  gasPrice     BigInt?  @map("gas_price")
+  status       String   @default("pending") // 'pending', 'confirmed', 'failed'
+  confirmedAt  DateTime? @map("confirmed_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  trade        Trade    @relation(fields: [tradeId], references: [id])
+  
+  @@index([txHash])
+  @@index([tradeId])
+  @@map("escrow_transactions")
+}
+
+// System notifications
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @map("user_id") @db.ObjectId
+  type      String   // 'order_matched', 'trade_update', 'message', 'dispute', etc.
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// Multi-chain balances (synced from wallet)
+model UserBalance {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @map("user_id") @db.ObjectId
+  chainId     Int      @map("chain_id")
+  tokenAddress String? @map("token_address") // null for native token
+  tokenSymbol String   @map("token_symbol")
+  balance     String   // Decimal as string for precision
+  usdValue    String?  @map("usd_value")
+  lastUpdated DateTime @default(now()) @updatedAt @map("last_updated")
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, chainId, tokenAddress])
+  @@index([userId])
+  @@index([chainId])
+  @@map("user_balances")
+}
+

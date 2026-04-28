@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CustomIcons } from '@/components/icons/CustomIcons';
 import { motion } from 'framer-motion';
+import { useWalletStore } from '@/store/wallet';
 
 // Beautiful SVG Graphics
 const SeedPhraseIcon = () => (
@@ -126,6 +127,8 @@ export default function BackupPage() {
   const [error, setError] = useState('');
   const [selectedWord, setSelectedWord] = useState<string>('');
 
+  const { wallet, resetWallet } = useWalletStore();
+
   const words = useMemo(() => mnemonic.split(' ').filter(w => w.trim()), [mnemonic]);
   
   const quizIndices = useMemo(() => {
@@ -144,6 +147,12 @@ export default function BackupPage() {
 
   useEffect(() => {
     if (!mnemonic || words.length === 0) {
+      // If no mnemonic, check if wallet was partially created and reset it
+      const { wallet, resetWallet } = useWalletStore.getState();
+      if (wallet && wallet.getAddress() && !wallet.hasKeystore()) {
+        // Wallet was created but setup not completed - reset it
+        resetWallet();
+      }
       router.push('/setup');
       return;
     }
@@ -233,7 +242,10 @@ export default function BackupPage() {
         <div className="px-5 pt-6 pb-4 relative z-10">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setStep('display')}
+              onClick={() => {
+                // Go back to display step
+                setStep('display');
+              }}
               className="p-2 text-megapayer-muted hover:text-megapayer-text transition-colors"
             >
               <CustomIcons.ChevronLeft className="w-5 h-5" />
@@ -360,7 +372,14 @@ export default function BackupPage() {
       <div className="px-5 pt-6 pb-4 relative z-10">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              // Always reset wallet if going back from backup page
+              // because wallet was created but setup not completed
+              if (wallet && wallet.getAddress() && !wallet.hasKeystore()) {
+                resetWallet();
+              }
+              router.push('/setup');
+            }}
             className="p-2 text-megapayer-muted hover:text-megapayer-text transition-colors"
           >
             <CustomIcons.ChevronLeft className="w-5 h-5" />

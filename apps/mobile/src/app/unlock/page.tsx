@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
 import { CustomIcons } from '@/components/icons/CustomIcons';
 import { motion } from 'framer-motion';
-import { isBiometricAvailable, isBiometricEnabled, unlockWithBiometric, enableBiometric } from '@/lib/biometric';
+import { isBiometricAvailable, isBiometricEnabled, unlockWithBiometric, enableBiometric, getBiometricType } from '@/lib/biometric';
 import { Capacitor } from '@capacitor/core';
 
 // Beautiful SVG Graphic for Unlock Page
@@ -132,6 +132,7 @@ export default function UnlockPage() {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [isBiometricLoading, setIsBiometricLoading] = useState(false);
+  const [biometricType, setBiometricType] = useState<string>('Biometric');
   
   const { 
     isInitialized, 
@@ -142,6 +143,15 @@ export default function UnlockPage() {
 
   useEffect(() => {
     if (isInitialized && !hasWallet) {
+      router.push('/setup');
+      return;
+    }
+    
+    // Check if wallet exists but keystore doesn't (incomplete setup)
+    const { wallet } = useWalletStore.getState();
+    if (wallet && wallet.getAddress() && !wallet.hasKeystore()) {
+      // Incomplete setup - reset and go back to setup
+      useWalletStore.getState().resetWallet();
       router.push('/setup');
       return;
     }
@@ -177,8 +187,10 @@ export default function UnlockPage() {
       if (Capacitor.isNativePlatform()) {
         const available = await isBiometricAvailable();
         const enabled = await isBiometricEnabled();
+        const type = await getBiometricType();
         setBiometricAvailable(available);
         setBiometricEnabled(enabled);
+        setBiometricType(type);
         
         // Auto-unlock with biometric if enabled
         if (available && enabled && hasWallet && !isUnlocked) {
@@ -383,7 +395,7 @@ export default function UnlockPage() {
               ) : (
                 <>
                   <CustomIcons.Shield className="w-5 h-5 text-megapayer-teal" />
-                  <span className="text-megapayer-teal">Unlock with Biometric</span>
+                  <span className="text-megapayer-teal">Unlock with {biometricType}</span>
                 </>
               )}
             </motion.button>

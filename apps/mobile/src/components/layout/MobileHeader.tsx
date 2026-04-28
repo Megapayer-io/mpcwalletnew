@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useWalletStore } from '@/store/wallet';
 import { CustomIcons } from '@/components/icons/CustomIcons';
 import { useRouter } from 'next/navigation';
+import { parseWalletAddress, parsePaymentRequest } from '@/lib/qrScanner';
+import { QRScannerModal } from '@/components/QRScannerModal';
 
 interface MobileHeaderProps {
   title: string;
@@ -25,6 +27,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ title, subtitle }) =
     lock
   } = useWalletStore();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
   // Close account menu when clicking outside
@@ -58,6 +61,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ title, subtitle }) =
     router.push('/unlock');
   };
 
+  const handleScanner = () => {
+    if (!isUnlocked || !address) return;
+    setShowQRScanner(true);
+  };
+
   const getAccountDisplayName = () => {
     if (currentAccount?.name) {
       return currentAccount.name;
@@ -83,12 +91,15 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ title, subtitle }) =
           {/* Left side - Scanner icon */}
           <div className="flex-shrink-0">
             {isUnlocked && address ? (
-              <button
-                className="w-12 h-12 rounded-2xl flex items-center justify-center bg-blue-50 dark:bg-blue-950/20 transition-all duration-300 hover:scale-110 hover:shadow-md"
-                title="Scanner (Coming soon)"
+              <motion.button
+                onClick={handleScanner}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center bg-blue-50 dark:bg-blue-950/20 transition-all duration-300 hover:shadow-md"
+                title="Scan QR Code"
               >
                 <CustomIcons.QrCode className="w-6 h-6 text-blue-500" />
-              </button>
+              </motion.button>
             ) : (
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 dark:bg-gray-800/20">
                 <CustomIcons.QrCode className="w-6 h-6 text-gray-400" />
@@ -116,7 +127,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ title, subtitle }) =
                     {getAccountDisplayName()}
                   </span>
                   {accounts.length > 1 && (
-                    <CustomIcons.ChevronDown className={`w-3.5 h-3.5 text-gray-400 flex-shrink-0 transition-transform ${showAccountMenu ? 'rotate-180' : ''}`} />
+                  <CustomIcons.ChevronDown className={`w-3.5 h-3.5 text-gray-400 flex-shrink-0 transition-transform ${showAccountMenu ? 'rotate-180' : ''}`} />
                   )}
                 </button>
 
@@ -208,6 +219,27 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ title, subtitle }) =
           </div>
         </div>
       </div>
+      {/* QR Scanner Modal */}
+      <QRScannerModal
+        isOpen={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={(text) => {
+          // Parse payment request or address
+          const paymentRequest = parsePaymentRequest(text);
+          if (paymentRequest && paymentRequest.address) {
+            const url = `/send?to=${encodeURIComponent(paymentRequest.address)}${paymentRequest.amount ? `&amount=${encodeURIComponent(paymentRequest.amount)}` : ''}`;
+            router.push(url);
+          } else {
+            // Try plain address
+            const scannedAddress = parseWalletAddress(text);
+            if (scannedAddress) {
+              router.push(`/send?to=${encodeURIComponent(scannedAddress)}`);
+            } else {
+              alert('Could not parse QR code. Please scan a valid wallet address or payment request.');
+            }
+          }
+        }}
+      />
     </header>
   );
 };

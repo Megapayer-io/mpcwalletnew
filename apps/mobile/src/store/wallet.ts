@@ -105,6 +105,7 @@ interface WalletStore {
   lock: () => void;
   unlock: (password: string) => Promise<void>;
   saveKeystore: (mnemonic: string, password: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   addNetwork: (network: Omit<Network, 'chainId'> & { chainId: number }) => void;
   selectNetwork: (chainId: number) => void;
   getBalance: (address?: string) => Promise<string>;
@@ -455,13 +456,64 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     
     try {
       await wallet.saveKeystore(mnemonic, password);
+      // Only set hasWallet: true AFTER keystore is successfully saved
       set({ 
         hasWallet: true,
+        isUnlocked: wallet.isUnlocked(),
         isLoading: false 
       });
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to save keystore',
+        isLoading: false 
+      });
+      throw error;
+    }
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const { wallet } = get();
+    if (!wallet) throw new Error('Wallet not initialized');
+
+    set({ isLoading: true, error: null });
+    
+    try {
+      // Verify current password by unlocking (if not already unlocked)
+      const wasUnlocked = wallet.isUnlocked();
+      if (!wasUnlocked) {
+        await wallet.unlock(currentPassword);
+      }
+      
+      // Get the mnemonic (wallet must be unlocked)
+      const mnemonic = wallet.getMnemonicPhrase();
+      if (!mnemonic) {
+        throw new Error('Could not retrieve mnemonic. Please unlock your wallet first.');
+      }
+      
+      // Save keystore with new password
+      await wallet.saveKeystore(mnemonic, newPassword);
+      
+      // Update biometric token if enabled
+      try {
+        const { isBiometricEnabled, enableBiometric } = await import('@/lib/biometric');
+        const enabled = await isBiometricEnabled();
+        if (enabled) {
+          // Update biometric token with new password
+          await enableBiometric(newPassword);
+        }
+      } catch (bioError) {
+        // Silently fail - biometric update is optional
+        console.log('Biometric update skipped:', bioError);
+      }
+      
+      // Update store state
+      set({ 
+        isUnlocked: wallet.isUnlocked(),
+        isLoading: false 
+      });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to change password',
         isLoading: false 
       });
       throw error;

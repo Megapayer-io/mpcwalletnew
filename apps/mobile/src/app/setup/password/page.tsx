@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
 import { CustomIcons } from '@/components/icons/CustomIcons';
@@ -107,12 +107,23 @@ export default function PasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [useFaceId, setUseFaceId] = useState(true);
   const [understood, setUnderstood] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const { saveKeystore } = useWalletStore();
+  const { saveKeystore, wallet, resetWallet } = useWalletStore();
+
+  // Check if setup is incomplete when component mounts
+  useEffect(() => {
+    if (wallet && wallet.getAddress() && !wallet.hasKeystore()) {
+      // Wallet was created but keystore not saved - this is expected during setup
+      // But if user navigated here without mnemonic, something went wrong
+      if (!mnemonic) {
+        resetWallet();
+        router.push('/setup');
+      }
+    }
+  }, [wallet, mnemonic, resetWallet, router]);
 
   const getPasswordStrength = () => {
     if (password.length === 0) return { level: '', color: '', width: '0%' };
@@ -300,26 +311,6 @@ export default function PasswordPage() {
             <p className="text-xs font-body text-megapayer-muted mt-1.5">
               Must be at least 8 characters
             </p>
-          </div>
-
-          {/* Face ID Toggle */}
-          <div className="flex items-center justify-between py-2 megapayer-panel-soft rounded-xl px-4">
-            <label className="text-sm font-semibold font-heading text-megapayer-text">
-              Sign in with Face ID?
-            </label>
-            <button
-              type="button"
-              onClick={() => setUseFaceId(!useFaceId)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                useFaceId ? 'bg-megapayer-teal' : 'bg-megapayer-muted/40'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  useFaceId ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
           </div>
 
           {/* Disclaimer Checkbox */}

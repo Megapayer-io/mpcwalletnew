@@ -22,6 +22,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     { name: 'Receive', href: '/receive', icon: CustomIcons.Download, color: 'text-megapayer-emerald' },
     { name: 'History', href: '/history', icon: CustomIcons.History, color: 'text-megapayer-violet' },
     { name: 'NFTs', href: '/nfts', icon: CustomIcons.Image, color: 'text-megapayer-accent' },
+    { name: 'P2P Exchange', href: '/p2p', icon: CustomIcons.ArrowLeftRight, color: 'text-megapayer-emerald' },
     { name: 'Networks', href: '/networks', icon: CustomIcons.Globe, color: 'text-megapayer-teal' },
   ];
 
@@ -29,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     { name: 'Account Management', href: '/account', icon: CustomIcons.User, color: 'text-megapayer-teal' },
     { name: 'Import Tokens', href: '/tokens', icon: CustomIcons.Zap, color: 'text-megapayer-accent' },
     { name: 'Hardware Wallet', href: '/hardware', icon: CustomIcons.Shield, color: 'text-megapayer-emerald' },
+    { name: 'API Tests', href: '/test', icon: CustomIcons.Zap, color: 'text-megapayer-violet' },
   ];
 
   const isActive = (href: string) => {

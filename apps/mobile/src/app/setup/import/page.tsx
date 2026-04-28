@@ -117,7 +117,6 @@ export default function ImportPage() {
   const [showSeedPhrase, setShowSeedPhrase] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [useFaceId, setUseFaceId] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState('');
 
@@ -298,26 +297,6 @@ export default function ImportPage() {
                 )}
               </button>
             </div>
-          </div>
-
-          {/* Face ID Toggle */}
-          <div className="flex items-center justify-between py-2 megapayer-panel-soft rounded-xl px-4">
-            <label className="text-sm font-semibold font-heading text-megapayer-text">
-              Sign in with Face ID?
-            </label>
-            <button
-              type="button"
-              onClick={() => setUseFaceId(!useFaceId)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                useFaceId ? 'bg-megapayer-teal' : 'bg-megapayer-muted/40'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  useFaceId ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
           </div>
 
           {/* Terms */}

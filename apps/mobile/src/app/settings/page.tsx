@@ -6,6 +6,8 @@ import { useWalletStore } from '@/store/wallet';
 import { CustomIcons } from '@/components/icons/CustomIcons';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { isBiometricAvailable, isBiometricEnabled, enableBiometric, disableBiometric, getBiometricType } from '@/lib/biometric';
+import { Capacitor } from '@capacitor/core';
 
 // Beautiful SVG Graphics for Settings Page
 const SettingsIcon = () => (
@@ -92,15 +94,109 @@ export default function SettingsPage() {
     address,
     isUnlocked,
     currentNetwork,
-    lock
+    lock,
+    unlock,
+    wallet,
+    changePassword
   } = useWalletStore();
   
   const [copied, setCopied] = useState('');
   const [customTokens, setCustomTokens] = useState<any[]>([]);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricType, setBiometricType] = useState<string>('Biometric');
+  const [isTogglingBiometric, setIsTogglingBiometric] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
   useEffect(() => {
     loadCustomTokens();
+    checkBiometricStatus();
   }, []);
+
+  const checkBiometricStatus = async () => {
+    if (Capacitor.isNativePlatform()) {
+      const available = await isBiometricAvailable();
+      const enabled = await isBiometricEnabled();
+      const type = await getBiometricType();
+      setBiometricAvailable(available);
+      setBiometricEnabled(enabled);
+      setBiometricType(type);
+    }
+  };
+
+  const handleToggleBiometric = async () => {
+    if (!biometricAvailable) return;
+    
+    setIsTogglingBiometric(true);
+    try {
+      if (biometricEnabled) {
+        // Disable biometric
+        const result = await disableBiometric();
+        if (result.success) {
+          setBiometricEnabled(false);
+        } else {
+          alert(`Failed to disable ${biometricType}. Please try again.`);
+        }
+      } else {
+        // Enable biometric - need to unlock first to get the password token
+        // Prompt user to unlock with password, then enable biometric
+        const currentPassword = prompt(`To enable ${biometricType}, please enter your current password:`);
+        if (currentPassword) {
+          try {
+            // Try to unlock with the password to verify it
+            await unlock(currentPassword);
+            // If successful, enable biometric with the password
+            const result = await enableBiometric(currentPassword);
+            if (result.success) {
+              setBiometricEnabled(true);
+              alert(`${biometricType} has been enabled successfully!`);
+            } else {
+              alert(result.error || `Failed to enable ${biometricType}. Please try again.`);
+              // Lock again if biometric enable failed
+              lock();
+            }
+          } catch (error) {
+            alert('Incorrect password. Please try again.');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle biometric:', error);
+      alert(`Failed to toggle ${biometricType}. Please try again.`);
+    } finally {
+      setIsTogglingBiometric(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    const currentPassword = prompt('Enter your current password:');
+    if (!currentPassword) return;
+
+    const newPassword = prompt('Enter your new password (min 8 characters):');
+    if (!newPassword || newPassword.length < 8) {
+      alert('New password must be at least 8 characters long.');
+      return;
+    }
+
+    const confirmPassword = prompt('Confirm your new password:');
+    if (newPassword !== confirmPassword) {
+      alert('Passwords do not match.');
+      return;
+    }
+
+    try {
+      // Verify current password by unlocking (if not already unlocked)
+      if (!isUnlocked) {
+        await unlock(currentPassword);
+      }
+      
+      // Change password
+      await changePassword(currentPassword, newPassword);
+      alert('Password changed successfully!');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to change password. Please try again.');
+    }
+  };
 
   const loadCustomTokens = () => {
     const storedTokens = localStorage.getItem('mpc-wallet-tokens');
@@ -169,6 +265,23 @@ export default function SettingsPage() {
       icon: CustomIcons.Shield,
       color: '#34D399',
       items: [
+        ...(biometricAvailable ? [{
+          name: `${biometricType} Unlock`,
+          description: biometricEnabled ? `Enabled - Use ${biometricType} to unlock` : `Disabled - Enable ${biometricType} unlock`,
+          href: '#',
+          icon: CustomIcons.Shield,
+          onClick: handleToggleBiometric,
+          isToggle: true,
+          toggleValue: biometricEnabled,
+          toggleLoading: isTogglingBiometric
+        }] : []),
+        {
+          name: 'Change Password',
+          description: 'Update your wallet password',
+          href: '#',
+          icon: CustomIcons.Lock,
+          onClick: handleChangePassword
+        },
         {
           name: 'Notifications',
           description: 'Manage notification preferences',
@@ -208,7 +321,7 @@ export default function SettingsPage() {
             Please unlock your wallet to access settings.
           </p>
         </motion.div>
-      </div>
+        </div>
     );
   }
 
@@ -298,8 +411,8 @@ export default function SettingsPage() {
                 Current Network
               </label>
               <p className="text-xs font-body megapayer-panel-soft px-3 py-2 rounded-xl text-megapayer-text">
-                {currentNetwork?.name} (Chain ID: {currentNetwork?.chainId})
-              </p>
+                  {currentNetwork?.name} (Chain ID: {currentNetwork?.chainId})
+                </p>
             </div>
           </div>
         </motion.div>
@@ -308,39 +421,39 @@ export default function SettingsPage() {
       {/* Custom Tokens Preview */}
       {customTokens.length > 0 && (
         <div className="px-5 pb-4 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             className="megapayer-panel p-4 rounded-2xl border border-megapayer-border"
-          >
+        >
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-megapayer-accent to-megapayer-violet rounded-xl flex items-center justify-center flex-shrink-0">
                   <CustomIcons.Zap className="w-5 h-5 text-white" />
-                </div>
-                <h2 className="text-base font-semibold font-heading text-megapayer-text">Custom Tokens</h2>
               </div>
+                <h2 className="text-base font-semibold font-heading text-megapayer-text">Custom Tokens</h2>
+            </div>
               <Link href="/tokens">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="px-3 py-1.5 megapayer-btn-primary rounded-xl font-semibold font-heading text-xs flex items-center gap-1.5"
-                >
+            >
                   <CustomIcons.Plus className="w-3.5 h-3.5" />
                   <span>Manage</span>
                 </motion.button>
-              </Link>
-            </div>
-            
+            </Link>
+          </div>
+          
             <div className="flex items-center gap-2 text-xs font-body text-megapayer-muted">
               <span>{customTokens.length} token{customTokens.length !== 1 ? 's' : ''} added</span>
+                  </div>
+                </motion.div>
             </div>
-          </motion.div>
-        </div>
-      )}
+          )}
 
-      {/* Settings Sections */}
+        {/* Settings Sections */}
       <div className="px-5 space-y-4 relative z-10 flex-1">
         {settingsSections.map((section, sectionIndex) => {
           const Icon = section.icon;
@@ -398,7 +511,8 @@ export default function SettingsPage() {
                       ) : (
                         <button
                           onClick={item.onClick}
-                          className="w-full flex items-center justify-between p-4 hover:bg-megapayer-panel-soft transition-colors active:bg-megapayer-panel"
+                          disabled={(item as any).toggleLoading}
+                          className="w-full flex items-center justify-between p-4 hover:bg-megapayer-panel-soft transition-colors active:bg-megapayer-panel disabled:opacity-50"
                         >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${section.color}15` }}>
@@ -417,7 +531,25 @@ export default function SettingsPage() {
                               </p>
                             </div>
                           </div>
-                          <CustomIcons.ChevronRight className="w-4 h-4 text-megapayer-muted flex-shrink-0" />
+                          {(item as any).isToggle ? (
+                            <div className="flex-shrink-0">
+                              {(item as any).toggleLoading ? (
+                                <div className="w-5 h-5 border-2 border-megapayer-teal border-t-transparent rounded-full animate-spin"></div>
+                              ) : (
+                                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                  (item as any).toggleValue ? 'bg-megapayer-teal' : 'bg-megapayer-muted/40'
+                                }`}>
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                      (item as any).toggleValue ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <CustomIcons.ChevronRight className="w-4 h-4 text-megapayer-muted flex-shrink-0" />
+                          )}
                         </button>
                       )}
                     </motion.div>
@@ -522,6 +654,6 @@ export default function SettingsPage() {
           </p>
         </motion.div>
       </div>
-    </div>
+      </div>
   );
 }

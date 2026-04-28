@@ -245,67 +245,67 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
         className="megapayer-panel rounded-2xl border border-megapayer-border p-5"
       >
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#34D39915] flex items-center justify-center">
               <CustomIcons.QrCode className="w-5 h-5 text-[#34D399]" />
-            </div>
-            <div>
+              </div>
+              <div>
               <h3 className="text-sm font-bold font-heading text-megapayer-text">QR Code</h3>
               <p className="text-xs font-body text-megapayer-muted">Scan to send funds</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <motion.button
-              onClick={() => setShowQR(!showQR)}
+                onClick={() => setShowQR(!showQR)}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               className="p-2 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-lg transition-colors"
-              title={showQR ? 'Hide QR Code' : 'Show QR Code'}
-            >
+                title={showQR ? 'Hide QR Code' : 'Show QR Code'}
+              >
               {showQR ? <CustomIcons.EyeOff className="h-4 w-4" /> : <CustomIcons.Eye className="h-4 w-4" />}
             </motion.button>
             <motion.button
-              onClick={handleDownloadQR}
+                onClick={handleDownloadQR}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               className="p-2 text-megapayer-muted hover:text-megapayer-text hover:bg-megapayer-panel-soft rounded-lg transition-colors"
-              title="Download QR Code"
-            >
+                title="Download QR Code"
+              >
               <CustomIcons.Download className="h-4 w-4" />
             </motion.button>
+            </div>
           </div>
-        </div>
 
-        {showQR && (
-          <div className="text-center">
-            <div 
-              ref={qrRef}
+          {showQR && (
+            <div className="text-center">
+              <div 
+                ref={qrRef}
               className="inline-block p-4 megapayer-panel-soft border-2 border-megapayer-border rounded-2xl mb-3"
-            >
-              {qrCodeDataUrl ? (
-                <img 
-                  src={qrCodeDataUrl} 
-                  alt="Wallet QR Code" 
-                  className="rounded-xl max-w-full h-auto"
+              >
+                {qrCodeDataUrl ? (
+                  <img 
+                    src={qrCodeDataUrl} 
+                    alt="Wallet QR Code" 
+                    className="rounded-xl max-w-full h-auto"
                   style={{ width: Math.min(qrSize, 280), height: Math.min(qrSize, 280) }}
-                />
-              ) : (
+                  />
+                ) : (
                 <div className="w-64 h-64 megapayer-panel-soft rounded-xl flex items-center justify-center">
                   <CustomIcons.Refresh className="h-10 w-10 text-megapayer-muted animate-spin" />
-                </div>
+                  </div>
+                )}
+              </div>
+              
+            <p className="text-xs font-body text-megapayer-muted mb-1">
+                Scan this QR code to send {selectedToken} to your wallet
+              </p>
+              {amount && parseFloat(amount) > 0 && (
+              <p className="text-xs text-[#34D399] font-semibold font-heading">
+                  Amount: {amount} {selectedToken}
+                </p>
               )}
             </div>
-            
-            <p className="text-xs font-body text-megapayer-muted mb-1">
-              Scan this QR code to send {selectedToken} to your wallet
-            </p>
-            {amount && parseFloat(amount) > 0 && (
-              <p className="text-xs text-[#34D399] font-semibold font-heading">
-                Amount: {amount} {selectedToken}
-              </p>
-            )}
-          </div>
-        )}
+          )}
       </motion.div>
 
       {/* Address Card */}
@@ -318,80 +318,80 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-[#7C3AED15] flex items-center justify-center">
             <CustomIcons.Wallet className="w-5 h-5 text-[#7C3AED]" />
-          </div>
+            </div>
           <div>
             <h3 className="text-sm font-bold font-heading text-megapayer-text">Wallet Address</h3>
             <p className="text-xs font-body text-megapayer-muted">Your receiving address</p>
           </div>
         </div>
-        
+
         <div className="megapayer-panel-soft border border-megapayer-border rounded-xl p-3 mb-3">
           <div className="flex items-center gap-2 mb-2">
             <p className="text-xs font-mono font-body text-megapayer-text break-all flex-1">{address}</p>
             <motion.button
-              onClick={handleCopyAddress}
+                onClick={handleCopyAddress}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               className="p-2 text-megapayer-muted hover:text-[#34D399] hover:bg-megapayer-panel rounded-lg transition-colors flex-shrink-0"
-              title="Copy address"
-            >
-              {copied ? (
+                title="Copy address"
+              >
+                {copied ? (
                 <CustomIcons.CheckCircle className="h-4 w-4 text-[#34D399]" />
-              ) : (
+                ) : (
                 <CustomIcons.Copy className="h-4 w-4" />
-              )}
+                )}
             </motion.button>
+            </div>
           </div>
-        </div>
 
-        {/* Amount Input */}
+          {/* Amount Input */}
         <div className="mb-4">
           <label className="block text-xs font-bold font-heading text-megapayer-text mb-2">
-            Request Amount (Optional)
-          </label>
+              Request Amount (Optional)
+            </label>
           <div className="flex gap-2">
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
               className="flex-1 px-3 py-2.5 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-sm text-megapayer-text placeholder-megapayer-muted"
-              placeholder="0.0"
-              step="any"
-              min="0"
-            />
-            <select
-              value={selectedToken}
-              onChange={(e) => setSelectedToken(e.target.value)}
+                placeholder="0.0"
+                step="any"
+                min="0"
+              />
+              <select
+                value={selectedToken}
+                onChange={(e) => setSelectedToken(e.target.value)}
               className="px-3 py-2.5 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent text-sm font-semibold font-heading text-megapayer-text"
-            >
-              <option value={currentNetwork?.symbol || 'ETH'}>{currentNetwork?.symbol || 'ETH'}</option>
-            </select>
-          </div>
-          {amount && parseFloat(amount) > 0 && (
+              >
+                <option value={currentNetwork?.symbol || 'ETH'}>{currentNetwork?.symbol || 'ETH'}</option>
+              </select>
+            </div>
+            {amount && parseFloat(amount) > 0 && (
             <p className="text-xs text-megapayer-teal font-semibold font-heading mt-2">
-              Payment request: {amount} {selectedToken}
-            </p>
-          )}
-        </div>
+                Payment request: {amount} {selectedToken}
+              </p>
+            )}
+          </div>
 
-        {/* Action Buttons */}
+          {/* Action Buttons */}
         <div className="space-y-2">
           <motion.button
-            onClick={handleCopyPaymentRequest}
+              onClick={handleCopyPaymentRequest}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full megapayer-btn-primary py-3.5 rounded-xl text-sm font-bold font-heading flex items-center justify-center gap-2"
-          >
+            >
             <CustomIcons.Copy className="w-4 h-4" />
             Copy Payment Request
           </motion.button>
-          
+            
           <motion.button
-            onClick={() => setShowShareModal(true)}
+              onClick={() => setShowShareModal(true)}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full megapayer-panel-soft border border-megapayer-border py-3.5 rounded-xl text-sm font-bold font-heading text-megapayer-text flex items-center justify-center gap-2"
-          >
+            >
             <CustomIcons.Share2 className="w-4 h-4" />
             Share Address
           </motion.button>
@@ -400,13 +400,13 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
 
       {/* Share Modal - Mobile Friendly Bottom Sheet */}
       <AnimatePresence>
-        {showShareModal && (
+      {showShareModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-            onClick={() => setShowShareModal(false)}
+              onClick={() => setShowShareModal(false)}
           >
             <motion.div
               initial={{ y: '100%' }}
@@ -437,7 +437,7 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
                     <h3 className="text-lg font-bold font-heading text-megapayer-text">Share Address</h3>
                     <p className="text-xs font-body text-megapayer-muted">Choose how to share</p>
                   </div>
-                </div>
+            </div>
                 <button
                   onClick={() => setShowShareModal(false)}
                   className="p-2 hover:bg-megapayer-panel-soft rounded-lg transition-colors"
@@ -464,11 +464,11 @@ export function ReceiveForm({ customAmount, customToken }: ReceiveFormProps) {
                     </div>
                     <span className="text-sm font-semibold font-heading text-megapayer-text">{option.name}</span>
                   </motion.button>
-                ))}
-              </div>
+              ))}
+            </div>
             </motion.div>
           </motion.div>
-        )}
+      )}
       </AnimatePresence>
     </div>
   );

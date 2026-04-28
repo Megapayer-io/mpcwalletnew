@@ -5,6 +5,7 @@
 
 import { BarcodeScanner } from '@capacitor-community/barcode-scanner';
 import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 
 export interface ScanResult {
   success: boolean;
@@ -40,7 +41,27 @@ export async function requestCameraPermission(): Promise<boolean> {
 
   try {
     const status = await BarcodeScanner.checkPermission({ force: true });
-    return status.granted ?? false;
+    
+      // Handle different permission states
+      if (status.granted) {
+        return true;
+      } else if (status.denied) {
+        // Permission denied permanently - user needs to enable in settings
+        alert('Camera permission is required to scan QR codes. Please enable it in your device settings.');
+        // Try to open app settings if available
+        try {
+          if (BarcodeScanner.openAppSettings) {
+            await BarcodeScanner.openAppSettings();
+          }
+        } catch (e) {
+          // Ignore if method doesn't exist
+          console.log('openAppSettings not available');
+        }
+        return false;
+      } else {
+        // Permission not granted yet
+        return false;
+      }
   } catch (error) {
     console.error('Permission request failed:', error);
     return false;
@@ -111,32 +132,175 @@ export async function startScanner(): Promise<ScanResult> {
   }
 
   try {
-    // Check/request permission
-    const hasPermission = await checkCameraPermission();
-    if (!hasPermission) {
-      const granted = await requestCameraPermission();
-      if (!granted) {
+    // Check and request camera permission
+    const permissionStatus = await BarcodeScanner.checkPermission({ force: false });
+    
+    if (!permissionStatus.granted) {
+      if (permissionStatus.denied) {
+        alert('Camera permission is required. Please enable it in your device settings.');
+        try {
+          if (BarcodeScanner.openAppSettings) {
+            await BarcodeScanner.openAppSettings();
+          }
+        } catch (e) {
+          // Ignore
+        }
         return {
           success: false,
-          error: 'Camera permission is required to scan QR codes'
+          error: 'Camera permission is required. Please enable it in app settings.'
+        };
+      }
+      
+      // Request permission
+      const requestStatus = await BarcodeScanner.checkPermission({ force: true });
+      
+      if (!requestStatus.granted) {
+        return {
+          success: false,
+          error: 'Camera permission was denied. Please enable it in app settings.'
         };
       }
     }
 
-    // Hide background content
+    // Prepare scanner with explicit configuration
+    await BarcodeScanner.prepare();
+    
+    // Make StatusBar transparent/overlay during scanning
+    // Handle each StatusBar call individually to prevent one failure from blocking others
+    if (Capacitor.isNativePlatform() && StatusBar) {
+      try {
+        if (typeof StatusBar.setOverlaysWebView === 'function') {
+          await StatusBar.setOverlaysWebView({ overlay: true });
+        }
+      } catch (e) {
+        // Ignore - method might not be available
+      }
+      
+      try {
+        if (typeof StatusBar.setStyle === 'function') {
+          await StatusBar.setStyle({ style: Style.Light });
+        }
+      } catch (e) {
+        // Ignore - method might not be available
+      }
+      
+      try {
+        if (typeof StatusBar.setBackgroundColor === 'function') {
+          await StatusBar.setBackgroundColor({ color: '#00000000' }); // Transparent
+        }
+      } catch (e) {
+        // Ignore - method might not be available
+      }
+    }
+    
+    // CRITICAL: Hide webview background FIRST - this makes the native camera view visible
+    // This must be called before making elements transparent
     await BarcodeScanner.hideBackground();
     
-    // Prepare scanner
-    await BarcodeScanner.prepare();
-
-    // Start scanning
+    // Small delay to ensure webview background is hidden
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // CRITICAL: Make ALL app elements transparent so camera preview shows through
+    // This is required for the camera view to be visible
+    if (typeof document !== 'undefined') {
+      const html = document.documentElement;
+      const body = document.body;
+      
+      // Remove background gradients and set to transparent
+      html.style.background = 'transparent';
+      html.style.backgroundColor = 'transparent';
+      body.style.background = 'transparent';
+      body.style.backgroundColor = 'transparent';
+      
+      // Make all main containers transparent
+      const appContainer = document.getElementById('__next') || document.body;
+      if (appContainer) {
+        appContainer.style.background = 'transparent';
+        appContainer.style.backgroundColor = 'transparent';
+      }
+      
+      // Make all direct children of body transparent
+      Array.from(body.children).forEach((child: any) => {
+        if (child && child.style) {
+          child.style.background = 'transparent';
+          child.style.backgroundColor = 'transparent';
+        }
+      });
+      
+      // Hide all elements that might block the camera view
+      // We'll add a class to identify scanner-active state
+      body.classList.add('scanner-active');
+    }
+    
+    // Start scanning - the native camera view should now be visible
     const result = await BarcodeScanner.startScan();
 
-    // Show background again
-    await BarcodeScanner.showBackground();
-    await BarcodeScanner.stopScan();
+    // Cleanup: Restore background and stop scanner
+    try {
+      // Restore app background
+      if (typeof document !== 'undefined') {
+        const html = document.documentElement;
+        const body = document.body;
+        
+        // Remove scanner-active class
+        body.classList.remove('scanner-active');
+        
+        // Restore backgrounds
+        html.style.background = '';
+        html.style.backgroundColor = '';
+        body.style.background = '';
+        body.style.backgroundColor = '';
+        
+        const appContainer = document.getElementById('__next') || document.body;
+        if (appContainer) {
+          appContainer.style.background = '';
+          appContainer.style.backgroundColor = '';
+        }
+        
+        // Restore children backgrounds
+        Array.from(body.children).forEach((child: any) => {
+          if (child && child.style) {
+            child.style.background = '';
+            child.style.backgroundColor = '';
+          }
+        });
+      }
+      
+      // Restore StatusBar - handle each call individually
+      if (Capacitor.isNativePlatform() && StatusBar) {
+        try {
+          if (typeof StatusBar.setOverlaysWebView === 'function') {
+            await StatusBar.setOverlaysWebView({ overlay: false });
+          }
+        } catch (e) {
+          // Ignore
+        }
+        
+        try {
+          if (typeof StatusBar.setStyle === 'function') {
+            await StatusBar.setStyle({ style: Style.Dark });
+          }
+        } catch (e) {
+          // Ignore
+        }
+        
+        try {
+          if (typeof StatusBar.setBackgroundColor === 'function') {
+            await StatusBar.setBackgroundColor({ color: '#ffffff' });
+          }
+        } catch (e) {
+          // Ignore
+        }
+      }
+      
+      await BarcodeScanner.showBackground();
+      await BarcodeScanner.stopScan();
+    } catch (cleanupError) {
+      // Ignore cleanup errors
+    }
 
-    if (result.hasContent) {
+    // Check if we got a result
+    if (result && result.hasContent && result.content) {
       return {
         success: true,
         text: result.content,
@@ -146,18 +310,82 @@ export async function startScanner(): Promise<ScanResult> {
 
     return {
       success: false,
-      error: 'No QR code detected'
+      error: 'No QR code detected. Please try again.'
     };
   } catch (error: any) {
-    // Show background on error
+    // Always cleanup on error - restore the webview and background
     try {
+      // Restore app background
+      if (typeof document !== 'undefined') {
+        const html = document.documentElement;
+        const body = document.body;
+        
+        // Remove scanner-active class
+        body.classList.remove('scanner-active');
+        
+        // Restore backgrounds
+        html.style.background = '';
+        html.style.backgroundColor = '';
+        body.style.background = '';
+        body.style.backgroundColor = '';
+        
+        const appContainer = document.getElementById('__next') || document.body;
+        if (appContainer) {
+          appContainer.style.background = '';
+          appContainer.style.backgroundColor = '';
+        }
+        
+        // Restore children backgrounds
+        Array.from(body.children).forEach((child: any) => {
+          if (child && child.style) {
+            child.style.background = '';
+            child.style.backgroundColor = '';
+          }
+        });
+      }
+      
+      // Restore StatusBar - handle each call individually
+      if (Capacitor.isNativePlatform() && StatusBar) {
+        try {
+          if (typeof StatusBar.setOverlaysWebView === 'function') {
+            await StatusBar.setOverlaysWebView({ overlay: false });
+          }
+        } catch (e) {
+          // Ignore
+        }
+        
+        try {
+          if (typeof StatusBar.setStyle === 'function') {
+            await StatusBar.setStyle({ style: Style.Dark });
+          }
+        } catch (e) {
+          // Ignore
+        }
+        
+        try {
+          if (typeof StatusBar.setBackgroundColor === 'function') {
+            await StatusBar.setBackgroundColor({ color: '#ffffff' });
+          }
+        } catch (e) {
+          // Ignore
+        }
+      }
+      
       await BarcodeScanner.showBackground();
       await BarcodeScanner.stopScan();
-    } catch (e) {
+    } catch (cleanupError) {
       // Ignore cleanup errors
     }
 
-    if (error.message?.includes('UserCancel') || error.message?.includes('cancel')) {
+    // Handle user cancellation
+    const errorMessage = error?.message || error?.toString() || '';
+    if (
+      errorMessage.includes('UserCancel') || 
+      errorMessage.includes('cancel') ||
+      errorMessage.includes('User cancelled') ||
+      errorMessage.includes('cancelled') ||
+      errorMessage.toLowerCase().includes('user cancel')
+    ) {
       return {
         success: false,
         error: 'Scan cancelled'
@@ -167,7 +395,7 @@ export async function startScanner(): Promise<ScanResult> {
     console.error('QR scan failed:', error);
     return {
       success: false,
-      error: error.message || 'Failed to scan QR code'
+      error: errorMessage || 'Failed to scan QR code. Please try again.'
     };
   }
 }

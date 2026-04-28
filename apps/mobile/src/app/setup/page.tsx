@@ -145,6 +145,13 @@ export default function SetupPage() {
   const { createWallet, isInitialized, hasWallet } = useWalletStore();
 
   useEffect(() => {
+    // Ensure onboarding is shown first
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+    if (!hasSeenOnboarding) {
+      router.replace('/onboarding');
+      return;
+    }
+    
     if (isInitialized && hasWallet) {
       router.push('/');
     }
@@ -199,18 +206,20 @@ export default function SetupPage() {
         />
       </div>
 
-      {/* Header with Back Button */}
-      <div className="px-5 pt-6 pb-4 relative z-10">
-        <motion.button
-          onClick={() => router.back()}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 text-megapayer-muted hover:text-megapayer-text transition-colors"
-        >
-          <CustomIcons.ChevronLeft className="w-5 h-5" />
-          <span className="text-sm font-semibold font-heading">Back</span>
-        </motion.button>
-      </div>
+      {/* Header with Back Button - Only show if coming from onboarding */}
+      {localStorage.getItem('hasSeenOnboarding') && (
+        <div className="px-5 pt-6 pb-4 relative z-10">
+          <motion.button
+            onClick={() => router.push('/onboarding')}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2 text-megapayer-muted hover:text-megapayer-text transition-colors"
+          >
+            <CustomIcons.ChevronLeft className="w-5 h-5" />
+            <span className="text-sm font-semibold font-heading">Back</span>
+          </motion.button>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12 relative z-10">

@@ -258,7 +258,7 @@ export default function NftsPage() {
         />
       </div>
 
-      {/* Header Section */}
+        {/* Header Section */}
       <div className="px-5 pt-6 pb-3 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -267,21 +267,21 @@ export default function NftsPage() {
         >
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#7C3AED15] flex-shrink-0">
             <NFTIcon />
-          </div>
+                </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold font-heading text-megapayer-text">NFTs</h1>
             <p className="text-sm font-body text-megapayer-muted mt-0.5">
               {isLoadingNfts ? 'Loading...' : `${displayNfts.length} ${displayNfts.length === 1 ? 'NFT' : 'NFTs'} on ${currentNetwork?.name || 'network'}`}
-            </p>
-          </div>
+                  </p>
+                </div>
           <motion.button
-            onClick={handleRefresh}
-            disabled={isLoadingNfts}
+                onClick={handleRefresh}
+                disabled={isLoadingNfts}
             whileHover={{ scale: isLoadingNfts ? 1 : 1.1 }}
             whileTap={{ scale: isLoadingNfts ? 1 : 0.9 }}
             className="p-2 rounded-xl hover:bg-megapayer-panel-soft transition-colors disabled:opacity-50"
             title="Refresh NFTs"
-          >
+              >
             <CustomIcons.Refresh className={`w-5 h-5 text-megapayer-text ${isLoadingNfts ? 'animate-spin' : ''}`} />
           </motion.button>
         </motion.div>
@@ -309,11 +309,11 @@ export default function NftsPage() {
               </button>
             </div>
           </motion.div>
-        </div>
+          </div>
       )}
 
       {/* Loading State - Beautiful Minimal Animation */}
-      {isLoadingNfts && (
+        {isLoadingNfts && (
         <div className="px-5 pb-4 relative z-10 flex-1 flex items-center justify-center">
           <div className="relative w-32 h-32">
             {/* Outer Rotating Gradient Ring */}
@@ -367,12 +367,12 @@ export default function NftsPage() {
               >
                 <CustomIcons.Image className="w-10 h-10 text-megapayer-teal" />
               </motion.div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Empty State */}
+        {/* Empty State */}
       {!isLoadingNfts && displayNfts.length === 0 && !userFriendlyError && (
         <div className="px-5 pb-4 relative z-10 flex-1 flex items-center justify-center">
           <motion.div
@@ -381,20 +381,20 @@ export default function NftsPage() {
             className="text-center"
           >
             <div className="w-20 h-20 bg-megapayer-panel-soft rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <CustomIcons.Image className="w-10 h-10 text-megapayer-muted" />
-            </div>
+                <CustomIcons.Image className="w-10 h-10 text-megapayer-muted" />
+              </div>
             <h3 className="text-base font-bold font-heading text-megapayer-text mb-2">No NFTs Found</h3>
             <p className="text-sm font-body text-megapayer-muted">
-              You don't have any NFTs in your wallet yet.
-            </p>
+                You don't have any NFTs in your wallet yet.
+              </p>
             <p className="text-xs font-body text-megapayer-muted mt-1">
               NFTs will appear here once you receive them.
-            </p>
+              </p>
           </motion.div>
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* NFT Grid */}
+        {/* NFT Grid */}
       {!isLoadingNfts && displayNfts.length > 0 && (
         <div className="px-5 pb-4 relative z-10">
           <div className="grid grid-cols-2 gap-3">
@@ -449,12 +449,12 @@ export default function NftsPage() {
                   <p className="text-xs font-body text-megapayer-muted truncate">
                     {nft.collectionName || 'Unknown Collection'}
                   </p>
-                </div>
+                  </div>
               </motion.div>
             ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* NFT Details Modal - Mobile Friendly Bottom Sheet Style */}
       <AnimatePresence>
@@ -483,35 +483,35 @@ export default function NftsPage() {
               {/* Drag Handle */}
               <div className="pt-3 pb-1 flex justify-center flex-shrink-0">
                 <div className="w-12 h-1.5 bg-megapayer-muted/30 rounded-full"></div>
-              </div>
+                    </div>
 
               {/* Header */}
               <div className="px-5 py-4 flex items-center justify-between border-b border-megapayer-border flex-shrink-0">
                 <h3 className="text-lg font-bold font-heading text-megapayer-text">NFT Details</h3>
-                <button
-                  onClick={() => setShowNftDetails(false)}
+                  <button
+                    onClick={() => setShowNftDetails(false)}
                   className="p-2 hover:bg-megapayer-panel-soft rounded-lg transition-colors"
-                >
+                  >
                   <CustomIcons.X className="w-5 h-5 text-megapayer-muted" />
-                </button>
+                  </button>
               </div>
-
+              
               {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
-                {/* Image */}
+                  {/* Image */}
                 <div className="aspect-square bg-megapayer-panel-soft rounded-2xl overflow-hidden">
-                  {selectedNft.image ? (
-                    <img
-                      src={selectedNft.image}
-                      alt={selectedNft.name || `NFT #${selectedNft.tokenId}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
+                      {selectedNft.image ? (
+                        <img
+                          src={selectedNft.image}
+                          alt={selectedNft.name || `NFT #${selectedNft.tokenId}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                         const fallback = target.parentElement?.querySelector('.detail-fallback') as HTMLElement;
                         if (fallback) fallback.style.display = 'flex';
-                      }}
-                    />
+                          }}
+                        />
                   ) : null}
                   <div 
                     className="detail-fallback w-full h-full flex items-center justify-center"
@@ -520,10 +520,10 @@ export default function NftsPage() {
                     <div className="text-center">
                       <CustomIcons.Image className="w-16 h-16 text-megapayer-muted mx-auto mb-2" />
                       <p className="text-sm font-body text-megapayer-muted">No Image Available</p>
+                        </div>
                     </div>
                   </div>
-                </div>
-
+                  
                 {/* Transfer Button - Below Picture */}
                 <div className="flex gap-3">
                   <motion.button
@@ -557,33 +557,33 @@ export default function NftsPage() {
                   <div className="megapayer-panel-soft p-3 rounded-xl">
                     <label className="block text-xs font-semibold font-heading text-megapayer-text mb-1">Name</label>
                     <p className="text-sm font-body text-megapayer-text">
-                      {selectedNft.name || `NFT #${selectedNft.tokenId}`}
-                    </p>
-                  </div>
-
+                        {selectedNft.name || `NFT #${selectedNft.tokenId}`}
+                      </p>
+                    </div>
+                    
                   <div className="megapayer-panel-soft p-3 rounded-xl">
                     <label className="block text-xs font-semibold font-heading text-megapayer-text mb-1">Collection</label>
                     <p className="text-sm font-body text-megapayer-text">
                       {selectedNft.collectionName || 'Unknown Collection'}
                     </p>
-                  </div>
-
+                    </div>
+                    
                   <div className="megapayer-panel-soft p-3 rounded-xl">
                     <label className="block text-xs font-semibold font-heading text-megapayer-text mb-1">Token ID</label>
                     <p className="text-sm font-mono font-body text-megapayer-text break-all">{selectedNft.tokenId}</p>
-                  </div>
-
+                    </div>
+                    
                   <div className="megapayer-panel-soft p-3 rounded-xl">
                     <label className="block text-xs font-semibold font-heading text-megapayer-text mb-1">Type</label>
                     <p className="text-sm font-body text-megapayer-text capitalize">{selectedNft.tokenType || 'ERC721'}</p>
-                  </div>
-
-                  {selectedNft.description && (
+                    </div>
+                    
+                    {selectedNft.description && (
                     <div className="megapayer-panel-soft p-3 rounded-xl">
                       <label className="block text-xs font-semibold font-heading text-megapayer-text mb-1">Description</label>
                       <p className="text-sm font-body text-megapayer-text leading-relaxed">{selectedNft.description}</p>
-                    </div>
-                  )}
+                      </div>
+                    )}
 
                   <div className="megapayer-panel-soft p-3 rounded-xl">
                     <label className="block text-xs font-semibold font-heading text-megapayer-text mb-1">Contract Address</label>
@@ -595,9 +595,9 @@ export default function NftsPage() {
                     >
                       {selectedNft.contractAddress}
                     </button>
-                  </div>
                 </div>
               </div>
+            </div>
 
             </motion.div>
           </motion.div>
@@ -626,7 +626,7 @@ export default function NftsPage() {
                   <CustomIcons.Send className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="text-xl font-bold font-heading text-megapayer-text">Transfer NFT</h3>
-              </div>
+          </div>
               <p className="text-sm font-body text-megapayer-muted mb-6">
                 Transfer functionality will be implemented in a future update.
               </p>
@@ -642,6 +642,6 @@ export default function NftsPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
   );
 }

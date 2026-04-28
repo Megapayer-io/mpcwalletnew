@@ -99,8 +99,8 @@ export const MobileBottomNav: React.FC = () => {
                     ${isDisabled 
                       ? `${item.bgColor} opacity-60 cursor-not-allowed`
                       : active
-                        ? `${item.activeBg} shadow-lg scale-105`
-                        : `${item.bgColor} group-hover:scale-110 group-hover:shadow-md border border-transparent hover:border-gray-200 dark:hover:border-gray-700`
+                      ? `${item.activeBg} shadow-lg scale-105`
+                      : `${item.bgColor} group-hover:scale-110 group-hover:shadow-md border border-transparent hover:border-gray-200 dark:hover:border-gray-700`
                     }
                   `}
                 >
@@ -110,8 +110,8 @@ export const MobileBottomNav: React.FC = () => {
                       ${isDisabled
                         ? `${item.color} opacity-60`
                         : active 
-                          ? `${item.activeColor} scale-110` 
-                          : `${item.color}`
+                        ? `${item.activeColor} scale-110` 
+                        : `${item.color}`
                       }
                     `}
                   />
@@ -123,8 +123,8 @@ export const MobileBottomNav: React.FC = () => {
                     ${isDisabled
                       ? `${item.labelColor} opacity-60`
                       : active 
-                        ? `${item.activeLabelColor}` 
-                        : `${item.labelColor}`
+                      ? `${item.activeLabelColor}` 
+                      : `${item.labelColor}`
                     }
                   `}
                 >

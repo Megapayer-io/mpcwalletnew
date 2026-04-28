@@ -6,7 +6,8 @@ import { CustomIcons } from './icons/CustomIcons';
 import { PinProtection } from './PinProtection';
 import { generateFallbackIcon } from '@/lib/tokenIconService';
 import { motion, AnimatePresence } from 'framer-motion';
-import { startScanner, parseWalletAddress, parsePaymentRequest } from '@/lib/qrScanner';
+import { parseWalletAddress, parsePaymentRequest } from '@/lib/qrScanner';
+import { QRScannerModal } from './QRScannerModal';
 
 interface Token {
   address: string;
@@ -24,6 +25,8 @@ interface SendFormProps {
   isDropdownOpen: boolean;
   setIsDropdownOpen: (open: boolean) => void;
   loadCustomTokens: () => void;
+  initialTo?: string;
+  initialAmount?: string;
 }
 
 export function SendForm({ 
@@ -34,11 +37,13 @@ export function SendForm({
   currentNetwork, 
   isDropdownOpen, 
   setIsDropdownOpen, 
-  loadCustomTokens 
+  loadCustomTokens,
+  initialTo = '',
+  initialAmount = ''
 }: SendFormProps) {
   const [formData, setFormData] = useState({
-    to: '',
-    amount: ''
+    to: initialTo,
+    amount: initialAmount
   });
   const [txHash, setTxHash] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +52,7 @@ export function SendForm({
   const [usdBalance, setUsdBalance] = useState<string>('0.00');
   const [isLoadingUsd, setIsLoadingUsd] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [pendingTransaction, setPendingTransaction] = useState<{
     type: 'eth' | 'erc20';
     params: any;
@@ -57,6 +63,16 @@ export function SendForm({
   useEffect(() => {
     loadBalance();
   }, [selectedToken]);
+
+  // Update form data when initial values change (from query params)
+  useEffect(() => {
+    if (initialTo) {
+      setFormData(prev => ({ ...prev, to: initialTo }));
+    }
+    if (initialAmount) {
+      setFormData(prev => ({ ...prev, amount: initialAmount }));
+    }
+  }, [initialTo, initialAmount]);
 
   useEffect(() => {
     const loadUsdBalance = async () => {
@@ -134,15 +150,15 @@ export function SendForm({
       return;
     }
 
-    if (selectedToken.address === '') {
+      if (selectedToken.address === '') {
       setPendingTransaction({
         type: 'eth',
         params: {
           to: formData.to,
           valueEth: formData.amount
         }
-      });
-    } else {
+        });
+      } else {
       setPendingTransaction({
         type: 'erc20',
         params: {
@@ -251,7 +267,7 @@ export function SendForm({
                   }}
                 />
               )}
-            </div>
+              </div>
             
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold font-heading text-megapayer-text truncate">
@@ -267,92 +283,92 @@ export function SendForm({
           
           {/* Token Dropdown */}
           <AnimatePresence>
-            {isDropdownOpen && (
+          {isDropdownOpen && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 className="absolute top-full left-0 right-0 mt-2 megapayer-panel border border-megapayer-border rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto"
               >
-                {/* Native Token Option */}
-                <div
-                  onClick={() => {
-                    onTokenChange({
-                      address: '',
-                      symbol: currentNetwork?.symbol || 'ETH',
-                      decimals: 18,
-                      name: currentNetwork?.name || 'Ethereum'
-                    });
-                    setIsDropdownOpen(false);
-                  }}
+              {/* Native Token Option */}
+              <div
+                onClick={() => {
+                  onTokenChange({
+                    address: '',
+                    symbol: currentNetwork?.symbol || 'ETH',
+                    decimals: 18,
+                    name: currentNetwork?.name || 'Ethereum'
+                  });
+                  setIsDropdownOpen(false);
+                }}
                   className="flex items-center gap-3 p-3 hover:bg-megapayer-panel-soft cursor-pointer transition-colors"
-                >
+              >
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {nativeTokenLogo ? (
-                      <img
-                        src={nativeTokenLogo}
-                        alt={`${currentNetwork?.symbol} logo`}
+                {nativeTokenLogo ? (
+                  <img
+                    src={nativeTokenLogo}
+                    alt={`${currentNetwork?.symbol} logo`}
                         className="w-10 h-10 rounded-xl"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = generateFallbackIcon(currentNetwork?.symbol || 'ETH', 56);
-                        }}
-                      />
-                    ) : (
-                      <div className="w-10 h-10 bg-gradient-to-br from-[#22E1FF] to-[#7C3AED] rounded-xl flex items-center justify-center text-white font-bold text-sm">
-                        {currentNetwork?.symbol?.charAt(0) || 'E'}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold font-heading text-megapayer-text">
-                      {currentNetwork?.symbol || 'ETH'} - {currentNetwork?.name || 'Ethereum'} (Native)
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Custom Token Options */}
-                {customTokens.map((token) => (
-                  <div
-                    key={`${token.address}-${token.symbol}`}
-                    onClick={() => {
-                      onTokenChange(token);
-                      setIsDropdownOpen(false);
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = generateFallbackIcon(currentNetwork?.symbol || 'ETH', 56);
                     }}
-                    className="flex items-center gap-3 p-3 hover:bg-megapayer-panel-soft cursor-pointer transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      <img
-                        src={(token as any).logoUrl || generateFallbackIcon(token.symbol, 56)}
-                        alt={`${token.symbol} logo`}
-                        className="w-10 h-10 rounded-xl"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = generateFallbackIcon(token.symbol, 56);
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold font-heading text-megapayer-text">
-                        {token.symbol} - {token.name || 'Custom Token'}
-                      </p>
-                    </div>
+                  />
+                ) : (
+                      <div className="w-10 h-10 bg-gradient-to-br from-[#22E1FF] to-[#7C3AED] rounded-xl flex items-center justify-center text-white font-bold text-sm">
+                    {currentNetwork?.symbol?.charAt(0) || 'E'}
                   </div>
-                ))}
-                
-                {customTokens.length === 0 && (
+                )}
+              </div>
+              <div>
+                    <p className="text-sm font-bold font-heading text-megapayer-text">
+                  {currentNetwork?.symbol || 'ETH'} - {currentNetwork?.name || 'Ethereum'} (Native)
+                    </p>
+              </div>
+            </div>
+            
+            {/* Custom Token Options */}
+            {customTokens.map((token) => (
+              <div
+                key={`${token.address}-${token.symbol}`}
+                onClick={() => {
+                  onTokenChange(token);
+                  setIsDropdownOpen(false);
+                }}
+                    className="flex items-center gap-3 p-3 hover:bg-megapayer-panel-soft cursor-pointer transition-colors"
+              >
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <img
+                    src={(token as any).logoUrl || generateFallbackIcon(token.symbol, 56)}
+                    alt={`${token.symbol} logo`}
+                        className="w-10 h-10 rounded-xl"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = generateFallbackIcon(token.symbol, 56);
+                    }}
+                  />
+                </div>
+                <div>
+                      <p className="text-sm font-bold font-heading text-megapayer-text">
+                    {token.symbol} - {token.name || 'Custom Token'}
+                      </p>
+                </div>
+              </div>
+            ))}
+        
+        {customTokens.length === 0 && (
                   <div className="p-4 text-center">
                     <p className="text-xs font-body text-megapayer-muted">
                       No custom tokens. Add them in Tokens page.
-                    </p>
-                  </div>
+              </p>
+            </div>
                 )}
               </motion.div>
-            )}
+        )}
           </AnimatePresence>
-        </div>
+      </div>
       </motion.div>
-
+        
       {/* Balance Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -376,28 +392,28 @@ export function SendForm({
         </div>
         <div className="mb-2">
           <p className="text-3xl font-bold font-heading text-megapayer-text">
-            {isLoadingBalance ? (
+              {isLoadingBalance ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-megapayer-teal border-t-transparent rounded-full animate-spin"></span>
-                <span>Loading...</span>
-              </span>
-            ) : (
-              `${parseFloat(currentBalance).toFixed(6)} ${selectedToken.symbol}`
-            )}
-          </p>
-          {currentBalance && !isLoadingBalance && (
-            <p className="text-sm font-body text-megapayer-muted mt-1">
-              {isLoadingUsd ? (
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 border-2 border-megapayer-muted border-t-transparent rounded-full animate-spin"></span>
-                  <span>Loading USD...</span>
+                  <span>Loading...</span>
                 </span>
               ) : (
-                `≈ $${usdBalance} USD`
+                `${parseFloat(currentBalance).toFixed(6)} ${selectedToken.symbol}`
               )}
             </p>
-          )}
-        </div>
+            {currentBalance && !isLoadingBalance && (
+            <p className="text-sm font-body text-megapayer-muted mt-1">
+                {isLoadingUsd ? (
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 border-2 border-megapayer-muted border-t-transparent rounded-full animate-spin"></span>
+                    <span>Loading USD...</span>
+                  </span>
+                ) : (
+                `≈ $${usdBalance} USD`
+                )}
+              </p>
+            )}
+          </div>
       </motion.div>
 
       {/* Send Form */}
@@ -412,49 +428,23 @@ export function SendForm({
           <div className="flex items-center justify-between mb-3">
             <label htmlFor="to" className="block text-sm font-bold font-heading text-megapayer-text">
               Recipient Address
-            </label>
+          </label>
           </div>
           <div className="relative">
-            <input
-              type="text"
-              id="to"
-              name="to"
-              value={formData.to}
-              onChange={handleInputChange}
+          <input
+            type="text"
+            id="to"
+            name="to"
+            value={formData.to}
+            onChange={handleInputChange}
               className="w-full px-4 py-3.5 pr-14 megapayer-panel-soft border border-megapayer-border rounded-xl focus:ring-2 focus:ring-megapayer-teal focus:border-transparent font-mono text-sm text-megapayer-text placeholder-megapayer-muted"
               placeholder="0x... or scan QR code"
-              required
-            />
+            required
+          />
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
               <motion.button
                 type="button"
-                onClick={async () => {
-                  try {
-                    const result = await startScanner();
-                    if (result.success && result.text) {
-                      // Parse payment request or address
-                      const paymentRequest = parsePaymentRequest(result.text);
-                      if (paymentRequest) {
-                        setFormData(prev => ({
-                          ...prev,
-                          to: paymentRequest.address,
-                          amount: paymentRequest.amount || prev.amount
-                        }));
-                      } else {
-                        // Try plain address
-                        const address = parseWalletAddress(result.text);
-                        if (address) {
-                          setFormData(prev => ({
-                            ...prev,
-                            to: address
-                          }));
-                        }
-                      }
-                    }
-                  } catch (error) {
-                    console.error('QR scan error:', error);
-                  }
-                }}
+                onClick={() => setShowQRScanner(true)}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 className="p-2 text-megapayer-muted hover:text-megapayer-teal hover:bg-megapayer-panel rounded-lg transition-colors"
@@ -463,7 +453,7 @@ export function SendForm({
                 <CustomIcons.QrCode className="h-5 w-5" />
               </motion.button>
             </div>
-          </div>
+        </div>
         </motion.div>
 
         {/* Amount */}
@@ -508,7 +498,7 @@ export function SendForm({
               {[25, 50, 75, 100].map((percent) => (
                 <motion.button
                   key={percent}
-                  type="button"
+                type="button"
                   onClick={() => handlePercentageClick(percent)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -527,24 +517,24 @@ export function SendForm({
 
         {/* Error Display */}
         <AnimatePresence>
-          {error && (
+        {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               className="megapayer-panel-soft border border-red-400/30 rounded-xl p-4"
             >
-              <div className="flex items-center gap-3">
-                <CustomIcons.AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-600 font-medium">{error}</p>
-              </div>
+            <div className="flex items-center gap-3">
+              <CustomIcons.AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-600 font-medium">{error}</p>
+            </div>
             </motion.div>
-          )}
+        )}
         </AnimatePresence>
 
         {/* Success Display */}
         <AnimatePresence>
-          {txHash && (
+        {txHash && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -552,27 +542,27 @@ export function SendForm({
               className="megapayer-panel-soft border border-[#34D39930] rounded-xl p-4"
             >
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-[#34D399] rounded-full"></div>
                   <p className="text-sm text-[#34D399] font-semibold font-heading">Transaction sent successfully!</p>
-                </div>
-                {getExplorerUrl(txHash) && (
+              </div>
+              {getExplorerUrl(txHash) && (
                   <motion.a
-                    href={getExplorerUrl(txHash)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  href={getExplorerUrl(txHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="flex items-center gap-2 text-xs text-[#34D399] hover:text-[#34D399] transition-colors"
-                  >
+                >
                     <span>View</span>
-                    <CustomIcons.ExternalLink className="h-3 w-3" />
+                  <CustomIcons.ExternalLink className="h-3 w-3" />
                   </motion.a>
-                )}
-              </div>
+              )}
+            </div>
               <p className="text-xs text-megapayer-muted font-mono break-all">{txHash}</p>
             </motion.div>
-          )}
+        )}
         </AnimatePresence>
 
         {/* Send Button */}
@@ -590,7 +580,7 @@ export function SendForm({
             </>
           ) : (
             <>
-              <CustomIcons.Send className="w-5 h-5" />
+          <CustomIcons.Send className="w-5 h-5" />
               <span>Send Transaction</span>
             </>
           )}
@@ -604,6 +594,32 @@ export function SendForm({
         onSuccess={handlePasswordSuccess}
         title="Confirm Transaction"
         description="Enter your wallet password to confirm this transaction"
+      />
+
+      {/* QR Scanner Modal */}
+      <QRScannerModal
+        isOpen={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={(text) => {
+          // Parse payment request or address
+          const paymentRequest = parsePaymentRequest(text);
+          if (paymentRequest) {
+            setFormData(prev => ({
+              ...prev,
+              to: paymentRequest.address,
+              amount: paymentRequest.amount || prev.amount
+            }));
+          } else {
+            // Try plain address
+            const address = parseWalletAddress(text);
+            if (address) {
+              setFormData(prev => ({
+                ...prev,
+                to: address
+              }));
+            }
+          }
+        }}
       />
     </div>
   );

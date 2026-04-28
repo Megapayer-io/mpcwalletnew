@@ -27,21 +27,55 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
     if (isInitialized) {
       setIsLoading(false);
       
-      // Redirect logic
-      if (!hasWallet && !pathname.startsWith('/setup') && !pathname.startsWith('/onboarding')) {
-        // Check if user has seen onboarding
+      // First check: If no wallet, check onboarding FIRST
+      if (!hasWallet) {
+        // Always check onboarding first - don't allow setup without onboarding
         const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
-        if (!hasSeenOnboarding) {
-          router.push('/onboarding');
+        if (!hasSeenOnboarding && pathname !== '/onboarding') {
+          router.replace('/onboarding');
+          return;
+        }
+        // Only show setup if onboarding is complete
+        if (hasSeenOnboarding && !pathname.startsWith('/setup') && pathname !== '/onboarding') {
+          router.replace('/setup');
+          return;
+        }
+      }
+      
+      // Check for incomplete setup (wallet created but keystore not saved)
+      const { wallet } = useWalletStore.getState();
+      if (wallet && wallet.getAddress() && !wallet.hasKeystore() && pathname !== '/setup' && !pathname.startsWith('/setup')) {
+        // Incomplete setup - reset wallet and go back to setup
+        useWalletStore.getState().resetWallet();
+        const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+        if (hasSeenOnboarding) {
+          router.replace('/setup');
         } else {
-          router.push('/setup');
+          router.replace('/onboarding');
         }
         return;
       }
       
-      if (hasWallet && !isUnlocked && pathname !== '/unlock' && !pathname.startsWith('/setup') && !pathname.startsWith('/onboarding')) {
-        router.push('/unlock');
-        return;
+      // Second check: If wallet exists but locked - but first verify keystore exists
+      if (hasWallet && !isUnlocked) {
+        const { wallet } = useWalletStore.getState();
+        // If wallet has address but no keystore, it's incomplete setup
+        if (wallet && wallet.getAddress() && !wallet.hasKeystore()) {
+          // Incomplete setup - reset wallet
+          useWalletStore.getState().resetWallet();
+          const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+          if (hasSeenOnboarding) {
+            router.replace('/setup');
+          } else {
+            router.replace('/onboarding');
+          }
+          return;
+        }
+        // Only redirect to unlock if keystore exists
+        if (pathname !== '/unlock' && !pathname.startsWith('/setup') && !pathname.startsWith('/onboarding')) {
+          router.replace('/unlock');
+          return;
+        }
       }
     }
   }, [isInitialized, hasWallet, isUnlocked, pathname, router]);

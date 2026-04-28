@@ -3,7 +3,7 @@
  * Handles fingerprint/FaceID unlock for the wallet
  */
 
-import { NativeBiometric } from 'capacitor-native-biometric';
+import { NativeBiometric, BiometryType } from 'capacitor-native-biometric';
 import { SecureStoragePlugin } from 'capacitor-secure-storage-plugin';
 import { Capacitor } from '@capacitor/core';
 
@@ -14,6 +14,46 @@ export interface BiometricResult {
   success: boolean;
   error?: string;
   token?: string;
+}
+
+/**
+ * Get biometric type (fingerprint, face, etc.)
+ */
+export async function getBiometricType(): Promise<string> {
+  if (!Capacitor.isNativePlatform()) {
+    return 'none';
+  }
+
+  try {
+    const result = await NativeBiometric.isAvailable();
+    if (!result.isAvailable) {
+      return 'none';
+    }
+    
+    // Check platform
+    const platform = Capacitor.getPlatform();
+    if (platform === 'ios') {
+      if (result.biometryType === BiometryType.FACE_ID) {
+        return 'Face ID';
+      } else if (result.biometryType === BiometryType.TOUCH_ID) {
+        return 'Touch ID';
+      }
+      return 'Biometric';
+    } else if (platform === 'android') {
+      // Check if it's fingerprint or face
+      if (result.biometryType === BiometryType.FACE_AUTHENTICATION) {
+        return 'Face Unlock';
+      } else if (result.biometryType === BiometryType.FINGERPRINT) {
+        return 'Fingerprint';
+      }
+      return 'Fingerprint'; // Default for Android
+    }
+    
+    return 'Biometric';
+  } catch (error) {
+    console.error('Biometric type check failed:', error);
+    return 'none';
+  }
 }
 
 /**

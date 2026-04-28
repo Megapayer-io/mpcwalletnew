@@ -329,3 +329,21 @@ body {
     color: #d9c6ff;
   }
 }
+
+/* Scanner active state - hide all app content when scanning */
+body.scanner-active,
+body.scanner-active * {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+body.scanner-active {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+body.scanner-active #__next,
+body.scanner-active #__next * {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

@@ -184,8 +184,8 @@ export default function ReceivePage() {
             ease: "linear"
           }}
         />
-      </div>
-
+        </div>
+        
       {/* Header Section */}
       <div className="px-5 pt-6 pb-3 relative z-10">
         <motion.div
@@ -200,11 +200,11 @@ export default function ReceivePage() {
             <h1 className="text-2xl font-bold font-heading text-megapayer-text">Receive</h1>
             <p className="text-sm font-body text-megapayer-muted mt-0.5">
               Share your address to receive funds
-            </p>
-          </div>
+                </p>
+              </div>
         </motion.div>
-      </div>
-
+            </div>
+            
       {/* Receive Form */}
       <div className="flex-1 overflow-y-auto px-5 pb-4 relative z-10">
         <ReceiveForm />

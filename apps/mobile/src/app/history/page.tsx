@@ -254,9 +254,9 @@ export default function HistoryPage() {
             </div>
             <h3 className="text-base font-bold font-heading text-megapayer-text mb-2">No Wallet Connected</h3>
             <p className="text-sm font-body text-megapayer-muted">Please connect your wallet to view transaction history.</p>
+            </div>
           </div>
         </div>
-      </div>
     );
   }
 
@@ -279,7 +279,7 @@ export default function HistoryPage() {
             ease: "linear"
           }}
         />
-      </div>
+        </div>
 
       {/* Header Section */}
       <div className="px-5 pt-6 pb-3 relative z-10">
@@ -290,13 +290,13 @@ export default function HistoryPage() {
         >
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#7C3AED15] flex-shrink-0">
             <HistoryIcon />
-          </div>
+                </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold font-heading text-megapayer-text">History</h1>
             <p className="text-sm font-body text-megapayer-muted mt-0.5">
               {filteredTransactions.length} {filteredTransactions.length === 1 ? 'transaction' : 'transactions'} on {currentNetwork?.name || 'network'}
             </p>
-          </div>
+                </div>
           <motion.button
             onClick={() => fetchTransactions()}
             disabled={isLoadingTransactions}
@@ -311,28 +311,28 @@ export default function HistoryPage() {
 
         {/* Filter Buttons */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {(['all', 'send', 'receive', 'contract'] as const).map((filterType) => (
+                {(['all', 'send', 'receive', 'contract'] as const).map((filterType) => (
             <motion.button
-              key={filterType}
-              onClick={() => setFilter(filterType)}
+                    key={filterType}
+                    onClick={() => setFilter(filterType)}
               whileTap={{ scale: 0.95 }}
               className={`px-4 py-2 rounded-xl text-xs font-semibold font-heading whitespace-nowrap transition-all ${
-                filter === filterType
+                      filter === filterType
                   ? 'megapayer-btn-primary text-white'
                   : 'megapayer-panel-soft text-megapayer-text border border-megapayer-border'
-              }`}
-            >
-              {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
+                    }`}
+                  >
+                    {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
             </motion.button>
-          ))}
+                ))}
+          </div>
         </div>
-      </div>
 
-      {/* Transactions List */}
+        {/* Transactions List */}
       <div className="flex-1 overflow-y-auto px-5 pb-4 relative z-10">
-        {isLoadingTransactions ? (
+          {isLoadingTransactions ? (
           <Loader text="Loading transactions..." size="md" />
-        ) : filteredTransactions.length === 0 ? (
+          ) : filteredTransactions.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -350,69 +350,69 @@ export default function HistoryPage() {
                 }
               </p>
               <motion.button
-                onClick={() => fetchTransactions()}
+                  onClick={() => fetchTransactions()}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="megapayer-btn-primary px-6 py-3 rounded-xl font-semibold font-heading flex items-center justify-center gap-2 mx-auto"
-              >
+                >
                 <CustomIcons.Refresh className="w-4 h-4" />
                 Refresh
               </motion.button>
             </motion.div>
-          </div>
-        ) : (
+            </div>
+          ) : (
           <div className="space-y-3">
             {filteredTransactions.map((transaction, index) => (
               <motion.div
-                key={transaction.hash}
+                  key={transaction.hash}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                onClick={() => setSelectedTransaction(transaction)}
+                  onClick={() => setSelectedTransaction(transaction)}
                 className="megapayer-panel rounded-xl border border-megapayer-border p-4 active:scale-95 transition-all cursor-pointer"
               >
                 <div className="flex items-start gap-3">
                   {/* Icon */}
                   <div className="w-10 h-10 rounded-xl bg-megapayer-panel-soft flex items-center justify-center flex-shrink-0">
-                    {getTransactionIcon(transaction.type)}
-                  </div>
+                          {getTransactionIcon(transaction.type)}
+                        </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold font-heading text-megapayer-text capitalize">
-                        {transaction.type}
+                            {transaction.type}
                       </span>
                       <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border ${getStatusColor(transaction.status)}`}>
-                        {transaction.status}
-                      </span>
-                    </div>
+                            {transaction.status}
+                          </span>
+                        </div>
                     <p className="text-xs font-body text-megapayer-muted truncate mb-1">
                       {transaction.type === 'send' ? 'To: ' : transaction.type === 'receive' ? 'From: ' : ''}
                       {transaction.type === 'send' ? transaction.to.slice(0, 6) + '...' + transaction.to.slice(-4) : 
                        transaction.type === 'receive' ? transaction.from.slice(0, 6) + '...' + transaction.from.slice(-4) :
                        'Contract interaction'}
-                    </p>
+                        </p>
                     <p className="text-xs font-body text-megapayer-muted">
                       {formatDate(transaction.timestamp)}
-                    </p>
-                  </div>
+                        </p>
+                      </div>
 
                   {/* Amount */}
                   <div className="text-right flex-shrink-0">
                     <p className={`text-sm font-bold font-heading ${
                       transaction.type === 'receive' ? 'text-[#34D399]' : 'text-[#FF7A45]'
-                    }`}>
-                      {transaction.type === 'receive' ? '+' : '-'}
-                      {formatAmount(transaction.value)} {transaction.tokenSymbol || currentNetwork?.symbol || 'ETH'}
-                    </p>
+                        }`}>
+                          {transaction.type === 'receive' ? '+' : '-'}
+                          {formatAmount(transaction.value)} {transaction.tokenSymbol || currentNetwork?.symbol || 'ETH'}
+                        </p>
+                    </div>
                   </div>
-                </div>
               </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
 
       {/* Transaction Details Modal - Mobile Friendly Bottom Sheet */}
       <AnimatePresence>
@@ -441,18 +441,18 @@ export default function HistoryPage() {
               {/* Drag Handle */}
               <div className="pt-3 pb-1 flex justify-center flex-shrink-0">
                 <div className="w-12 h-1.5 bg-megapayer-muted/30 rounded-full"></div>
-              </div>
+                    </div>
 
               {/* Header */}
               <div className="px-5 py-4 flex items-center justify-between border-b border-megapayer-border flex-shrink-0">
                 <h3 className="text-lg font-bold font-heading text-megapayer-text">Transaction Details</h3>
-                <button
-                  onClick={() => setSelectedTransaction(null)}
+                  <button
+                    onClick={() => setSelectedTransaction(null)}
                   className="p-2 hover:bg-megapayer-panel-soft rounded-lg transition-colors"
-                >
+                  >
                   <CustomIcons.X className="w-5 h-5 text-megapayer-muted" />
-                </button>
-              </div>
+                  </button>
+                </div>
 
               {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3" style={{ minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
@@ -462,8 +462,8 @@ export default function HistoryPage() {
                   <span className={`px-3 py-1.5 text-xs font-semibold rounded-full border inline-block ${getStatusColor(selectedTransaction.status)}`}>
                     {selectedTransaction.status}
                   </span>
-                </div>
-
+              </div>
+              
                 {/* Hash */}
                 <div className="megapayer-panel-soft p-4 rounded-xl">
                   <label className="block text-xs font-semibold font-heading text-megapayer-text mb-2">Transaction Hash</label>
@@ -490,37 +490,37 @@ export default function HistoryPage() {
                       <CustomIcons.ExternalLink className="w-4 h-4 text-megapayer-muted" />
                     </motion.button>
                   </div>
-                </div>
+                  </div>
 
                 {/* From */}
                 <div className="megapayer-panel-soft p-4 rounded-xl">
                   <label className="block text-xs font-semibold font-heading text-megapayer-text mb-2">From</label>
                   <p className="text-xs font-mono font-body text-megapayer-text break-all">
-                    {selectedTransaction.from}
-                  </p>
-                </div>
+                      {selectedTransaction.from}
+                    </p>
+                  </div>
 
                 {/* To */}
                 <div className="megapayer-panel-soft p-4 rounded-xl">
                   <label className="block text-xs font-semibold font-heading text-megapayer-text mb-2">To</label>
                   <p className="text-xs font-mono font-body text-megapayer-text break-all">
-                    {selectedTransaction.to}
-                  </p>
-                </div>
+                      {selectedTransaction.to}
+                    </p>
+                  </div>
 
                 {/* Value */}
                 <div className="megapayer-panel-soft p-4 rounded-xl">
                   <label className="block text-xs font-semibold font-heading text-megapayer-text mb-2">Value</label>
                   <p className="text-sm font-bold font-heading text-megapayer-text">
-                    {formatAmount(selectedTransaction.value)} {selectedTransaction.tokenSymbol || currentNetwork?.symbol || 'ETH'}
-                  </p>
-                </div>
+                      {formatAmount(selectedTransaction.value)} {selectedTransaction.tokenSymbol || currentNetwork?.symbol || 'ETH'}
+                    </p>
+                  </div>
 
                 {/* Block Number */}
                 <div className="megapayer-panel-soft p-4 rounded-xl">
                   <label className="block text-xs font-semibold font-heading text-megapayer-text mb-2">Block Number</label>
                   <p className="text-sm font-body text-megapayer-text">{selectedTransaction.blockNumber.toLocaleString()}</p>
-                </div>
+                  </div>
 
                 {/* Gas Info */}
                 <div className="grid grid-cols-2 gap-3">
@@ -533,7 +533,7 @@ export default function HistoryPage() {
                     <p className="text-xs font-body text-megapayer-text">{parseInt(selectedTransaction.gasUsed).toLocaleString()}</p>
                   </div>
                 </div>
-
+                
                 {/* Timestamp */}
                 <div className="megapayer-panel-soft p-4 rounded-xl">
                   <label className="block text-xs font-semibold font-heading text-megapayer-text mb-2">Timestamp</label>
@@ -544,6 +544,6 @@ export default function HistoryPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
   );
 }

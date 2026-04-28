@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useWalletStore } from '@/store/wallet';
 import { SendForm } from '@/components/SendForm';
 import { CustomIcons } from '@/components/icons/CustomIcons';
@@ -137,10 +137,13 @@ const SendIcon = () => (
 
 export default function SendPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedToken, setSelectedToken] = useState<Token | null>(null);
   const [customTokens, setCustomTokens] = useState<Token[]>([]);
   const [nativeTokenLogo, setNativeTokenLogo] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [initialTo, setInitialTo] = useState<string>('');
+  const [initialAmount, setInitialAmount] = useState<string>('');
   const { isUnlocked, currentNetwork, isInitialized } = useWalletStore();
 
   useEffect(() => {
@@ -148,6 +151,18 @@ export default function SendPage() {
       router.push('/unlock');
     }
   }, [isInitialized, isUnlocked, router]);
+
+  // Handle query parameters from scanner
+  useEffect(() => {
+    const to = searchParams.get('to');
+    const amount = searchParams.get('amount');
+    if (to) {
+      setInitialTo(decodeURIComponent(to));
+    }
+    if (amount) {
+      setInitialAmount(decodeURIComponent(amount));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     loadCustomTokens();
@@ -259,6 +274,8 @@ export default function SendPage() {
             isDropdownOpen={isDropdownOpen}
             setIsDropdownOpen={setIsDropdownOpen}
             loadCustomTokens={loadCustomTokens}
+            initialTo={initialTo}
+            initialAmount={initialAmount}
           />
         </div>
       )}

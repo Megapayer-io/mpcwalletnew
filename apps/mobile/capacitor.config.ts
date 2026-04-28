@@ -20,6 +20,10 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: 'dark',
       backgroundColor: '#ffffff'
+    },
+    BarcodeScanner: {
+      // Configure barcode scanner plugin
+      // This ensures the camera preview is properly displayed
     }
   }
 };

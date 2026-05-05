@@ -59,7 +59,7 @@ export function MobileWarning() {
                 <span className="text-xs font-semibold text-megapayer-text">Desktop Recommended</span>
               </div>
               <p className="text-xs text-megapayer-muted">
-                For optimal security and user experience, please use Megapayer on a desktop or tablet device.
+                For optimal security and user experience, please use Ettios on a desktop or tablet device.
               </p>
             </div>
 
@@ -70,7 +70,7 @@ export function MobileWarning() {
                 <span className="text-xs font-semibold text-megapayer-text">Learn More</span>
               </div>
               <p className="text-xs text-megapayer-muted mb-2">
-                Read our comprehensive whitepaper to understand Megapayer's privacy-first approach.
+                Read our comprehensive whitepaper to understand Ettios' privacy-first approach.
               </p>
               <a
                 href="https://megapayerwalletwhitepaper.vercel.app/"

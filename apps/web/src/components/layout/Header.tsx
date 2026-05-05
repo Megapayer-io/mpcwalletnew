@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
         {/* Left side - Title */}
         <div className="animate-fade-in flex items-center gap-4">
           <div className="flex items-center gap-3">
-            <img src="/megapayer-logo.svg" alt="Megapayer logo" className="w-8 h-8" />
+            <img src="/ettios-logo.png" alt="Ettios logo" className="w-8 h-8" />
             <div>
               <h1 className="text-2xl font-bold text-megapayer-text font-heading">
                 {title}
@@ -91,9 +91,9 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
                 <div className="absolute right-0 mt-2 w-72 megapayer-panel backdrop-blur-xl border border-megapayer-border rounded-xl shadow-megapayer z-50 animate-fade-in">
                   <div className="p-4 border-b border-megapayer-border">
                     <div className="flex items-center space-x-3">
-                      <img src="/megapayer-logo.svg" alt="Megapayer logo" className="w-12 h-12" />
+                      <img src="/ettios-logo.png" alt="Ettios logo" className="w-12 h-12" />
                       <div>
-                        <p className="text-sm font-semibold text-megapayer-text">Megapayer</p>
+                        <p className="text-sm font-semibold text-megapayer-text">Ettios</p>
                       </div>
                     </div>
                   </div>

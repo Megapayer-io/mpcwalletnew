@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
             userId_chainId_tokenAddress: {
               userId: user.id,
               chainId: balance.chainId,
-              tokenAddress: balance.tokenAddress || null,
+              tokenAddress: balance.tokenAddress || '',
             },
           },
           update: {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, requireAdmin } from '@/lib/auth'
+import { requireAuth, requireAdmin, isWalletInAdminList } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
 // POST /api/auth/login
@@ -31,17 +31,35 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    const shouldBeAdmin = isWalletInAdminList(walletAddress)
+
     let authUser
     if (user) {
-      authUser = user
+      // Promote to admin if env list says so but DB record disagrees
+      if (shouldBeAdmin && !user.isAdmin) {
+        authUser = await prisma.user.update({
+          where: { id: user.id },
+          data: { isAdmin: true },
+          select: {
+            id: true,
+            walletAddress: true,
+            username: true,
+            email: true,
+            isAdmin: true,
+          },
+        })
+      } else {
+        authUser = user
+      }
     } else {
-      // Create new user
+      // Create new user, granting admin if their wallet is in the env list
       const newUser = await prisma.user.create({
         data: {
           walletAddress,
           isVerified: false,
           verificationLevel: 'basic',
           reputationScore: 5.0,
+          isAdmin: shouldBeAdmin,
         },
         select: {
           id: true,

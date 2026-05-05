@@ -34,7 +34,7 @@ export async function POST(
       data: {
         status: 'resolved',
         resolvedAt: new Date(),
-        resolvedBy: user.id,
+        adminId: user.id,
         resolution,
       },
     })

@@ -296,7 +296,7 @@ export default function SetupPage() {
   }
 
   return (
-    <SetupLayout title="Welcome to Megapayer" subtitle="Create a new wallet or import an existing one">
+    <SetupLayout title="Welcome to Ettios" subtitle="Create a new wallet or import an existing one">
       {/* Hero Section */}
       <div className="text-center mb-12">
         <div className="w-32 h-32 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl animate-float">

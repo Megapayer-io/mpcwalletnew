@@ -3,6 +3,19 @@ import jwt from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
 
+// Comma-separated list of wallet addresses that should be granted admin on login.
+// Compared case-insensitively. Set ADMIN_WALLET_ADDRESSES in Vercel env vars.
+export function isWalletInAdminList(walletAddress: string): boolean {
+  const raw = process.env.ADMIN_WALLET_ADDRESSES
+  if (!raw) return false
+  const target = walletAddress.toLowerCase()
+  return raw
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(target)
+}
+
 export interface AuthUser {
   id: string
   walletAddress: string
@@ -127,12 +140,22 @@ export async function authenticateRequest(request: Request): Promise<AuthUser | 
     return null
   }
 
+  // Auto-promote wallets listed in ADMIN_WALLET_ADDRESSES env var to admin.
+  let isAdmin = user.isAdmin
+  if (isWalletInAdminList(user.walletAddress) && !isAdmin) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { isAdmin: true },
+    })
+    isAdmin = true
+  }
+
   return {
     id: user.id,
     walletAddress: user.walletAddress,
     username: user.username,
     email: user.email,
-    isAdmin: user.isAdmin,
+    isAdmin,
   }
 }
 

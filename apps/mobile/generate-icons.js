@@ -19,7 +19,7 @@ try {
   process.exit(1);
 }
 
-const logoPath = path.join(__dirname, 'public', 'megapayer-logo.svg');
+const logoPath = path.join(__dirname, 'public', 'ettios-logo.png');
 const outputDir = path.join(__dirname, 'android', 'app', 'src', 'main', 'res');
 
 // Android icon sizes (in dp, converted to px at mdpi = 1x)
@@ -31,8 +31,8 @@ const iconSizes = {
   'mipmap-xxxhdpi': 192
 };
 
-// Background color (dark theme matching Megapayer brand)
-const backgroundColor = '#1A1A2E';
+// Background color (light theme matching Ettios brand silver coin)
+const backgroundColor = '#ffffff';
 
 async function generateIcons() {
   if (!fs.existsSync(logoPath)) {

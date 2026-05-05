@@ -296,7 +296,7 @@ export default function SetupPage() {
   }
 
   return (
-    <SetupLayout title="Welcome to Megapayer">
+    <SetupLayout title="Welcome to Ettios">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
         {/* Create New Wallet */}
         <div className="megapayer-panel rounded-xl shadow-md border border-megapayer-border p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group relative overflow-hidden">

@@ -111,7 +111,7 @@ export async function enableBiometric(token: string): Promise<BiometricResult> {
       await NativeBiometric.verifyIdentity({
         reason: 'Enable biometric unlock for your wallet',
         title: 'Enable Biometric Unlock',
-        subtitle: 'Use your fingerprint or face to unlock Megapayer',
+        subtitle: 'Use your fingerprint or face to unlock Ettios',
         description: 'This will allow you to quickly unlock your wallet using biometric authentication',
         negativeButtonText: 'Cancel'
       });
@@ -189,7 +189,7 @@ export async function unlockWithBiometric(): Promise<BiometricResult> {
     try {
       await NativeBiometric.verifyIdentity({
         reason: 'Unlock your wallet',
-        title: 'Unlock Megapayer',
+        title: 'Unlock Ettios',
         subtitle: 'Verify your identity',
         description: 'Use your fingerprint or face to unlock',
         negativeButtonText: 'Cancel',

@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.megapayer.wallet',
-  appName: 'Megapayer',
+  appName: 'Ettios',
   webDir: 'out',
   server: {
     androidScheme: 'https'

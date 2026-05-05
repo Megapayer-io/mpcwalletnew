@@ -1,30 +1,38 @@
 // Default networks configuration
 export const DEFAULT_NETWORKS = [
     {
+        chainId: 2237,
+        name: 'Ettios Mainnet',
+        rpcUrl: 'https://rpc.ettiosblockchain.io',
+        symbol: 'ETTIA',
+        blockExplorer: 'https://scan.ettiosblockchain.io'
+    },
+    {
         chainId: 1,
         name: 'Ethereum Mainnet',
-        rpcUrl: 'https://eth.llamarpc.com',
+        rpcUrl: 'https://ethereum-rpc.publicnode.com',
         symbol: 'ETH',
         blockExplorer: 'https://etherscan.io'
     },
     {
         chainId: 56,
         name: 'BNB Smart Chain',
-        rpcUrl: 'https://bsc-dataseed.binance.org',
+        rpcUrl: 'https://bsc-rpc.publicnode.com',
         symbol: 'BNB',
         blockExplorer: 'https://bscscan.com'
     },
     {
         chainId: 137,
         name: 'Polygon',
-        rpcUrl: 'https://polygon-rpc.com',
+        rpcUrl: 'https://polygon-bor-rpc.publicnode.com',
         symbol: 'MATIC',
         blockExplorer: 'https://polygonscan.com'
     }
 ];
 const STORAGE_KEY = 'evm-wallet-networks';
 /**
- * Load networks from localStorage
+ * Load networks from localStorage, merging defaults so newly-added defaults
+ * (e.g. Ettios) always appear even for users who already have a stored list.
  */
 export function loadNetworks() {
     if (typeof window === 'undefined')
@@ -33,7 +41,14 @@ export function loadNetworks() {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            return Array.isArray(parsed) ? parsed : DEFAULT_NETWORKS;
+            if (Array.isArray(parsed)) {
+                const byChainId = new Map();
+                for (const n of parsed) byChainId.set(n.chainId, n);
+                for (const def of DEFAULT_NETWORKS) {
+                    if (!byChainId.has(def.chainId)) byChainId.set(def.chainId, def);
+                }
+                return Array.from(byChainId.values());
+            }
         }
     }
     catch (error) {

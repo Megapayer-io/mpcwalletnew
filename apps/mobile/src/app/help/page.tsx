@@ -259,7 +259,7 @@ export default function HelpPage() {
                 </svg>
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <h3 className="text-sm font-semibold font-heading text-megapayer-text">Megapayer Chat</h3>
+                <h3 className="text-sm font-semibold font-heading text-megapayer-text">Ettios Chat</h3>
                 <p className="text-xs font-body text-megapayer-muted truncate mt-0.5">t.me/megapayerchat</p>
               </div>
               <CustomIcons.ExternalLink className="w-4 h-4 text-megapayer-muted flex-shrink-0" />

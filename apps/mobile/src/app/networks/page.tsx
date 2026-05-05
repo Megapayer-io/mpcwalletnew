@@ -291,6 +291,7 @@ export default function NetworksPage() {
   // Get network logo URL based on chain ID
   const getNetworkLogo = (chainId: number): string | null => {
     const logos: Record<number, string> = {
+      2237: 'https://scan.ettiosblockchain.io/assets/configs/network_icon.jpg', // Ettios
       1: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', // Ethereum
       56: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/info/logo.png', // BSC
       137: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/info/logo.png', // Polygon

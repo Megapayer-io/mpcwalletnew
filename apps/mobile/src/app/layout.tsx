@@ -17,7 +17,7 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: 'Megapayer',
+  title: 'Ettios',
   description: 'Privacy-Centric Smart Wallet - Professional Web3 Portfolio Management',
 };
 

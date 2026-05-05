@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Megapayer brand gradient background -->
-    <color name="ic_launcher_background">#1A1A2E</color>
+    <!-- Ettios brand light background -->
+    <color name="ic_launcher_background">#ffffff</color>
 </resources>

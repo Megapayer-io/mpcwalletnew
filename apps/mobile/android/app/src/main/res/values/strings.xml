@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Megapayer</string>
-    <string name="title_activity_main">Megapayer</string>
+    <string name="app_name">Ettios</string>
+    <string name="title_activity_main">Ettios</string>
     <string name="package_name">com.megapayer.wallet</string>
     <string name="custom_url_scheme">com.megapayer.wallet</string>
 </resources>

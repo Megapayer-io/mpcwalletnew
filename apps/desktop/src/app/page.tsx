@@ -332,7 +332,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <img src="/megapayer-logo.svg" alt="Megapayer logo" className="w-10 h-10" />
+                        <img src="/ettios-logo.png" alt="Ettios logo" className="w-10 h-10" />
                         <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-megapayer-emerald rounded-full border border-megapayer-panel animate-pulse"></div>
                       </div>
                       <div>

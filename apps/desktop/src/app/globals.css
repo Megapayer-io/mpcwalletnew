@@ -171,36 +171,24 @@
 }
 
 :root {
-  /* Megapayer Color Scheme */
-  --bg: #0B0B0F;
-  --panel: #10131e;
-  --panel-soft: #0f1220;
-  --text: #e7ecf5;
-  --muted: #9aa4b5;
+  /* Force light mode regardless of system preference */
+  color-scheme: light;
+  --bg: #ffffff;
+  --panel: #f8fafc;
+  --panel-soft: #f1f5f9;
+  --text: #1e293b;
+  --muted: #64748b;
   --teal: #22E1FF;
   --violet: #7C3AED;
   --emerald: #34D399;
   --accent: #FF7A45;
-  --border: rgba(255,255,255,0.12);
-  --border-soft: rgba(255,255,255,0.08);
-  --shadow: 0 18px 60px rgba(0,0,0,0.45);
-  
+  --border: rgba(0,0,0,0.12);
+  --border-soft: rgba(0,0,0,0.08);
+  --shadow: 0 18px 60px rgba(0,0,0,0.15);
+
   /* Legacy variables for compatibility */
   --background: var(--bg);
   --foreground: var(--text);
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #ffffff;
-    --panel: #f8fafc;
-    --panel-soft: #f1f5f9;
-    --text: #1e293b;
-    --muted: #64748b;
-    --border: rgba(0,0,0,0.12);
-    --border-soft: rgba(0,0,0,0.08);
-    --shadow: 0 18px 60px rgba(0,0,0,0.15);
-  }
 }
 
 body {

@@ -75,8 +75,8 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
         // Show about dialog
         api.showMessageBox({
           type: 'info',
-          title: 'About Megapayer Desktop',
-          message: 'Megapayer Desktop Wallet',
+          title: 'About Ettios Desktop',
+          message: 'Ettios Desktop Wallet',
           detail: 'Version 1.0.0\nSecure Multi-Chain Crypto Wallet'
         });
       };
@@ -125,7 +125,7 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-megapayer-accent rounded-full animate-ping"></div>
           </div>
           
-          <h2 className="text-2xl font-bold text-megapayer-text mb-2">Megapayer</h2>
+          <h2 className="text-2xl font-bold text-megapayer-text mb-2">Ettios</h2>
           
           {/* Loading text with shimmer */}
           <div className="relative mb-6">
@@ -174,7 +174,7 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
       '/settings': { title: 'Settings', subtitle: 'Manage your wallet settings' },
       '/browser': { title: 'DApp Browser', subtitle: 'Explore and interact with Web3 applications' },
     };
-    return titles[pathname] || { title: 'Megapayer', subtitle: undefined };
+    return titles[pathname] || { title: 'Ettios', subtitle: undefined };
   };
 
   const pageInfo = getPageTitle();

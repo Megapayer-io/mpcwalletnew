@@ -76,12 +76,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           <div className={`flex items-center ${isCollapsed ? 'justify-between px-2' : 'justify-between p-6'} border-b border-megapayer-border`}>
             <div className="flex items-center space-x-3">
               <div className="relative">
-                <img src="/megapayer-logo.svg" alt="Megapayer logo" className="w-10 h-10" />
+                <img src="/ettios-logo.png" alt="Ettios logo" className="w-10 h-10" />
               </div>
               {!isCollapsed && (
                 <div className="animate-fade-in">
                   <h1 className="text-xl font-bold text-megapayer-text font-heading">
-                    Megapayer
+                    Ettios
                   </h1>
                 </div>
               )}

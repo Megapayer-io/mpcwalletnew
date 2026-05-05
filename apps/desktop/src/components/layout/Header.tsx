@@ -50,8 +50,8 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
       <div className="flex items-center justify-between w-full">
         {/* Left side - Logo */}
         <div className="flex items-center gap-2">
-          <img src="/megapayer-logo.svg" alt="Megapayer" className="w-6 h-6" />
-          <span className="text-sm font-bold text-megapayer-text font-heading hidden sm:block">Megapayer</span>
+          <img src="/ettios-logo.png" alt="Ettios" className="w-6 h-6" />
+          <span className="text-sm font-bold text-megapayer-text font-heading hidden sm:block">Ettios</span>
         </div>
 
         {/* Right side - Actions */}
@@ -76,9 +76,9 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
                 <div className="absolute right-0 mt-2 w-72 megapayer-panel backdrop-blur-xl border border-megapayer-border rounded-xl shadow-megapayer z-50 animate-fade-in">
                   <div className="p-4 border-b border-megapayer-border">
                     <div className="flex items-center space-x-3">
-                      <img src="/megapayer-logo.svg" alt="Megapayer logo" className="w-12 h-12" />
+                      <img src="/ettios-logo.png" alt="Ettios logo" className="w-12 h-12" />
                       <div>
-                        <p className="text-sm font-semibold text-megapayer-text">Megapayer</p>
+                        <p className="text-sm font-semibold text-megapayer-text">Ettios</p>
                       </div>
                     </div>
                   </div>

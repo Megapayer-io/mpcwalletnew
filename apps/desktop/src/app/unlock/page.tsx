@@ -70,8 +70,8 @@ export default function UnlockPage() {
         <div className="text-center animate-fade-in">
           <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float">
             <Image
-              src="/megapayer-logo.svg"
-              alt="Megapayer Logo"
+              src="/ettios-logo.png"
+              alt="Ettios Logo"
               width={40}
               height={40}
               className="w-10 h-10"
@@ -90,8 +90,8 @@ export default function UnlockPage() {
         <div className="text-center animate-fade-in">
           <div className="w-20 h-20 bg-gradient-to-br from-megapayer-teal via-megapayer-violet to-megapayer-accent rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Image
-              src="/megapayer-logo.svg"
-              alt="Megapayer Logo"
+              src="/ettios-logo.png"
+              alt="Ettios Logo"
               width={40}
               height={40}
               className="w-10 h-10"
@@ -127,8 +127,8 @@ export default function UnlockPage() {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <Image
-              src="/megapayer-logo.svg"
-              alt="Megapayer Logo"
+              src="/ettios-logo.png"
+              alt="Ettios Logo"
               width={32}
               height={32}
               className="w-8 h-8"
@@ -150,7 +150,7 @@ export default function UnlockPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
-            Unlock your Megapayer wallet to continue
+            Unlock your Ettios wallet to continue
           </motion.p>
         </div>
 

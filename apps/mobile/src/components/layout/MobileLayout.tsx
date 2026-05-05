@@ -97,7 +97,7 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
       '/setup': { title: 'Setup', subtitle: 'Create or import wallet' },
       '/unlock': { title: 'Unlock', subtitle: 'Enter your password' },
     };
-    return pageInfo[pathname] || { title: 'Megapayer', subtitle: undefined };
+    return pageInfo[pathname] || { title: 'Ettios', subtitle: undefined };
   };
 
   const pageInfo = getPageInfo();

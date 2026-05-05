@@ -1,7 +1,7 @@
 {
-  "productName": "Megapayer Desktop",
+  "productName": "Ettios Desktop",
   "version": "1.0.0",
-  "identifier": "com.megapayer.desktop",
+  "identifier": "com.ettios.desktop",
   "build": {
     "beforeDevCommand": "npm run dev:renderer",
     "beforeBuildCommand": "npm run build:renderer",
@@ -13,7 +13,7 @@
       {
         "fullscreen": false,
         "resizable": true,
-        "title": "Megapayer Desktop",
+        "title": "Ettios Desktop",
         "width": 1200,
         "height": 800,
         "minWidth": 800,
@@ -61,8 +61,8 @@
     ],
     "category": "Finance",
     "shortDescription": "Secure Multi-Chain Crypto Wallet",
-    "longDescription": "Megapayer Desktop Wallet - A secure multi-chain cryptocurrency wallet",
-    "copyright": "© 2024 Megapayer",
+    "longDescription": "Ettios Desktop Wallet - A secure multi-chain cryptocurrency wallet",
+    "copyright": "© 2024 Ettios",
     "resources": [],
     "externalBin": [],
     "windows": {

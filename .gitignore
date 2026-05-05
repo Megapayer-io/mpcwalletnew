@@ -143,6 +143,51 @@ release/
 *.deb
 *.rpm
 
-# Rust/Tauri build artifacts
+# Rust / Cargo build artifacts (Tauri desktop)
 target/
 **/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock.bak
+
+# Tauri build outputs / generated platform projects
+**/src-tauri/target/
+**/src-tauri/gen/android/
+**/src-tauri/gen/apple/
+**/src-tauri/WixTools/
+**/src-tauri/.cargo/
+**/src-tauri/binaries/
+
+# Compiled binaries / installers
+*.dll
+*.dylib
+*.so
+*.msi
+*.AppImage
+
+# Android / Gradle
+**/android/app/build/
+**/android/build/
+**/android/.gradle/
+**/android/.idea/
+**/android/local.properties
+**/android/app/release/
+**/android/app/debug/
+**/android/captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# iOS / Xcode
+**/ios/App/build/
+**/ios/App/Pods/
+**/ios/App/App.xcworkspace/xcuserdata/
+**/ios/App/App.xcodeproj/xcuserdata/
+**/ios/DerivedData/
+*.xcuserstate
+*.ipa
+
+# Capacitor
+.capacitor/
+**/capacitor-cordova-android-plugins/

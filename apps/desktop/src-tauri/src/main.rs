@@ -100,7 +100,7 @@ fn main() {
             let icon = app.default_window_icon().cloned();
             
             let mut builder = TrayIconBuilder::new()
-                .tooltip("Megapayer Desktop");
+                .tooltip("Ettios Desktop");
             
             if let Some(icon) = icon {
                 builder = builder.icon(icon);

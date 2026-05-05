@@ -1,7 +1,7 @@
 {
-  "name": "megapayer-desktop",
+  "name": "ettios-desktop",
   "version": "1.0.0",
-  "description": "Megapayer Desktop Wallet - Secure Multi-Chain Crypto Wallet",
+  "description": "Ettios Desktop Wallet - Secure Multi-Chain Crypto Wallet",
   "main": "index.js",
   "homepage": "./",
   "scripts": {

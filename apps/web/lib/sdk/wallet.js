@@ -700,6 +700,21 @@ export class EvmWallet {
                     isUnlocked: false // Always start locked
                 };
             }
+            // One-time migration: switch existing wallets to Ettios as default network.
+            // Triggered once per browser; users can still manually switch afterwards.
+            const ETTIOS_MIGRATION_KEY = 'evm-wallet-default-ettios-v1';
+            if (!localStorage.getItem(ETTIOS_MIGRATION_KEY)) {
+                const ettios = (this.state.networks || []).find(n => n.chainId === 2237)
+                    || loadNetworks().find(n => n.chainId === 2237);
+                if (ettios) {
+                    this.state.currentNetwork = ettios;
+                    if (!(this.state.networks || []).some(n => n.chainId === 2237)) {
+                        this.state.networks = [ettios, ...(this.state.networks || [])];
+                    }
+                    localStorage.setItem(ETTIOS_MIGRATION_KEY, '1');
+                    this.saveState();
+                }
+            }
             // Load accounts data
             this.loadAccounts();
         }

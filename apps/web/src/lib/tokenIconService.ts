@@ -8,6 +8,8 @@ interface TokenIconResult {
 
 export class TokenIconService {
   private static readonly POPULAR_TOKENS = {
+    // Ettios native
+    'ETTIA': '/ettios-coin.png',
     // Native tokens
     'ETH': 'https://assets.coingecko.com/coins/images/279/large/ethereum.png',
     'MATIC': 'https://assets.coingecko.com/coins/images/4713/large/matic-token-icon.png',

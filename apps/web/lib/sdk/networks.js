@@ -1,37 +1,38 @@
 // Default networks configuration
 export const DEFAULT_NETWORKS = [
     {
+        chainId: 2237,
+        name: 'Ettios Mainnet',
+        rpcUrl: 'https://rpc.ettiosblockchain.io',
+        symbol: 'ETTIA',
+        blockExplorer: 'https://scan.ettiosblockchain.io'
+    },
+    {
         chainId: 1,
         name: 'Ethereum Mainnet',
-        rpcUrl: 'https://eth.llamarpc.com',
+        rpcUrl: 'https://ethereum-rpc.publicnode.com',
         symbol: 'ETH',
         blockExplorer: 'https://etherscan.io'
     },
     {
         chainId: 56,
         name: 'BNB Smart Chain',
-        rpcUrl: 'https://bsc-dataseed.binance.org',
+        rpcUrl: 'https://bsc-rpc.publicnode.com',
         symbol: 'BNB',
         blockExplorer: 'https://bscscan.com'
     },
     {
         chainId: 137,
         name: 'Polygon',
-        rpcUrl: 'https://polygon-rpc.com',
+        rpcUrl: 'https://polygon-bor-rpc.publicnode.com',
         symbol: 'MATIC',
         blockExplorer: 'https://polygonscan.com'
-    },
-    {
-        chainId: 11155111,
-        name: 'Sepolia Testnet',
-        rpcUrl: 'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-        symbol: 'ETH',
-        blockExplorer: 'https://sepolia.etherscan.io'
     }
 ];
 const STORAGE_KEY = 'evm-wallet-networks';
 /**
- * Load networks from localStorage
+ * Load networks from localStorage, merging defaults so newly-added defaults
+ * (e.g. Ettios) always appear even for users who already have a stored list.
  */
 export function loadNetworks() {
     if (typeof window === 'undefined')
@@ -40,7 +41,14 @@ export function loadNetworks() {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            return Array.isArray(parsed) ? parsed : DEFAULT_NETWORKS;
+            if (Array.isArray(parsed)) {
+                const byChainId = new Map();
+                for (const def of DEFAULT_NETWORKS) byChainId.set(def.chainId, def);
+                for (const n of parsed) {
+                    if (!byChainId.has(n.chainId)) byChainId.set(n.chainId, n);
+                }
+                return Array.from(byChainId.values());
+            }
         }
     }
     catch (error) {
